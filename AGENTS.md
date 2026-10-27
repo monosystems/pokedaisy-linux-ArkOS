@@ -63,10 +63,11 @@ plain `cp` when deploy.sh is there.
 ## Writing
 
 - Code comments explain why, in English, in the voice of the file around them.
-- Docs are `PORTING.md` (the feature inventory against the app), `linux/PLAN.md`,
-  `linux/README.md` and `3ds/README.md`; update them in the same change as the
-  behaviour they describe, including the phase table and a feature's row in
-  `PORTING.md`.
+- Docs are `PORTING.md` (the feature inventory against the app), `TODO.md` (the
+  order the work goes in), `linux/PLAN.md`, `linux/README.md` and `3ds/README.md`;
+  update them in the same change as the behaviour they describe, including the phase
+  table and a feature's row in `PORTING.md`. A TODO item that lands gets ticked, and
+  its rows move with it.
 - `README.md` opens with this fork's own section: what the ports are and how much
   of the app is ported. The upstream text below the divider stays unchanged, so an
   upstream README change still merges cleanly. The percentage is counted from
