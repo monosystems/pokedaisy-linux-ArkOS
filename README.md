@@ -1,3 +1,51 @@
+# PokeDaisy for Linux handhelds and the Nintendo 3DS
+
+This fork ports PokeDaisy to two devices the Android app cannot run on: **ArkOS
+handhelds** such as the R36S (SDL2, 640x480, one screen) and the **Nintendo 3DS**
+(the game on the top screen, the companion on the touch screen). Both run the game
+on mGBA, and both draw the companion from one small portable C core
+([`3ds/core`](3ds/core)), so the two ports read and draw a game the same way.
+
+It is a rewrite of the companion, not a recompile: the app is Kotlin and Jetpack
+Compose, which neither device can run.
+
+- [`PORTING.md`](PORTING.md): every feature of the app, row by row, with what each
+  port does today and the effort a missing one needs. The number below comes from it.
+- [`linux/README.md`](linux/README.md): the SDL2 port, its controls and the PortMaster package.
+- [`3ds/README.md`](3ds/README.md): the 3DS port and its preview tool.
+- [`linux/PLAN.md`](linux/PLAN.md): the phases the work goes in.
+
+## How much is ported: 29%
+
+Of the app's features, 221 apply to these two devices. Eleven more are marked not
+applicable, because the hardware has no use for them (two-screen layouts, casting,
+touch controls). Of the 221:
+
+| | Features |
+| --- | --- |
+| Finished on both ports | 51 |
+| Partial: one host only, or narrower than the app | 27 |
+| Not started | 143 |
+
+**29%** counts a partial feature as a half. By area:
+
+| Area | Features | Ported |
+| --- | ---: | ---: |
+| Emulation, saves, speed, screen, input | 49 | 31% |
+| The companion's tabs | 109 | 39% |
+| Over the game: HUD, quick menu, battle buttons, makeover | 22 | 0% |
+| Library, cheats and the other app surfaces | 24 | 15% |
+| Game and language support | 17 | 24% |
+
+Measured on 2026-10-27 from `PORTING.md`. **Keep the two in step**: when a row's
+status changes there, change this table in the same commit. The save editor that
+upstream keeps behind a feature flag is not counted, because release 1.3.2 does not
+ship it.
+
+The upstream project's README follows unchanged.
+
+---
+
 <div align="center">
 
 <img src="https://pokedaisy.com/og.png" alt="PokeDaisy: Game Boy, Game Boy Color, GBA and DS player with a live companion, on two screens or one, for Pokemon games and ROM hacks, free and open source" width="100%">

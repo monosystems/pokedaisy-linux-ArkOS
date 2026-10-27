@@ -226,3 +226,5 @@ not used; nor is render-to-texture.
   party icons' two-frame animation.
 - More state slots with thumbnails, and resuming where the player left off (with
   the app's `pkStateMatchesSave` check first).
+- The full inventory of what the app has and this port does not is
+  [`../PORTING.md`](../PORTING.md); it lists the effort behind each row.

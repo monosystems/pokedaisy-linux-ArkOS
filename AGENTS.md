@@ -63,8 +63,16 @@ plain `cp` when deploy.sh is there.
 ## Writing
 
 - Code comments explain why, in English, in the voice of the file around them.
-- Docs are `linux/PLAN.md`, `linux/README.md` and `3ds/README.md`; update them in
-  the same change as the behaviour they describe, including the phase table.
+- Docs are `PORTING.md` (the feature inventory against the app), `linux/PLAN.md`,
+  `linux/README.md` and `3ds/README.md`; update them in the same change as the
+  behaviour they describe, including the phase table and a feature's row in
+  `PORTING.md`.
+- `README.md` opens with this fork's own section: what the ports are and how much
+  of the app is ported. The upstream text below the divider stays unchanged, so an
+  upstream README change still merges cleanly. The percentage is counted from
+  `PORTING.md` (a partial feature counts half, not-applicable rows are left out) by
+  `python3 porting_stats.py`, and is updated in the same commit as the row that moved
+  it.
 - Commits carry no Claude/Anthropic attribution (no `Co-Authored-By`, no
   "Generated with"); upstream keeps a commit-msg hook that rejects it, and this
   fork follows the same rule.

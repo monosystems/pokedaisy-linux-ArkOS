@@ -7,7 +7,8 @@ the portable C core from [`3ds/core`](../3ds/core), unchanged and shared with
 the 3DS port, so both ports read and draw the game the same way.
 
 `README.md` says what the port does today; this file says what comes next and
-in which order.
+in which order. The row by row inventory of the app's features against both
+ports, with the effort each missing one needs, is [`../PORTING.md`](../PORTING.md).
 
 ## Status
 
