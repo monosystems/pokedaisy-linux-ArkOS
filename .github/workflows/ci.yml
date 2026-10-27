@@ -7,6 +7,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # A manual run from the Actions tab (the first push to a fresh fork doesn't
+  # always start one; the button is also handy before a release).
+  workflow_dispatch:
   workflow_call:
 
 concurrency:
