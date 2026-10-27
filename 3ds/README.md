@@ -58,7 +58,12 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
     says the guide is AI-written and may be wrong, as in the app.
   - **POKéDEX**: seen / caught from the save, in Kanto / Hoenn or National
     order (the save's own, or the other with a tap); an entry has the game's
-    picture, category, types, height / weight, text, base stats and ability.
+    picture, category, types, height / weight, text, base stats and ability,
+    and an **EVOLVE** section under INFO: the whole family both ways (what it
+    comes from and becomes), each link over how it happens ("LV 16", "Trade",
+    "Level up, high friendship, by day"), the species the page is on in red;
+    tap another family member to open its page. EVOLVE shows where the ROM's
+    evolution table is known (FireRed rev 1, Emerald).
   - **SETTINGS** (the gear): place, money, file and speed, then SCREEN and
     FAST-FORWARD (pick-lists), SAVE STATE / LOAD STATE / LEAVE GAME (confirmed).
   - **TRAINER CARD** (the button in SETTINGS' title, like the app's TOOLS): the
@@ -141,7 +146,8 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
   drives the companion with taps found by hit id - a pressed slot, a summary,
   BATTLE, BAG (an item, a drag, the next pocket), SETTINGS, a pick-list, a
   confirm, MAP (a tapped tile, the blink, PLACES), POKéDEX (scrolled, an
-  entry, the next, the other dex), GUIDE (the notice, every page, a hint and
+  entry, its EVOLVE family and the next member's page, the next entry, the
+  other dex), GUIDE (the notice, every page, a hint and
   its answer), BATTLE's INFO and SUGGESTIONS, the TRAINER CARD (blinked, mid-flip,
   the back) - drawing each as the 3DS's two screens. It also renders each card
   whole and prints the CRC32 `TrainerCardTest` pins: FireRed's `d62339db` /
@@ -181,8 +187,9 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 
 | Path | What |
 |---|---|
-| `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the game list (`pd_menu`) and the settings file (`pd_settings`) |
-| `core/*_gen.c` | Generated: names / moves / type chart / map sections / item text / gender ratios from the app's Kotlin tables (`tools/gen_tables.py`), the ROM art's fingerprints (map and card) and the cursor grids (`tools/gen_map_tables.py`), the guides and area data (`tools/gen_guide.py`), Pixel Operator as a 1-bit font plus drawn ♂ ♀ (`tools/gen_font.py`) |
+| `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables, front pics and the EVOLVE family; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the game list (`pd_menu`) and the settings file (`pd_settings`) |
+| `core/*_gen.c` | Generated: names / moves / type chart / map sections / item names / gender ratios from the app's Kotlin tables (`tools/gen_tables.py`), the ROM art's fingerprints (map and card) and the cursor grids (`tools/gen_map_tables.py`), the guides and area data (`tools/gen_guide.py`), Pixel Operator as a 1-bit font plus drawn ♂ ♀ (`tools/gen_font.py`) |
+| `core/pd_item_desc.c` | The two games' item descriptions, frozen: upstream stopped bundling them (the app reads the ROM's `gItems`, `RomItemText.kt`), so they live here, out of the generated file, until `pd_item_description` does the same |
 | `ctr/` | The 3DS host: `main.c` (game loop, ndsp audio, HID, files, states) and `gpu.c` (citro2d: the game and canvases written into textures in the GPU's tiled order, drawn as quads), and the CMake build against the mGBA submodule |
 | `desktop/` | The preview tool and its small PNG writer |
 | `test/` | The fixture ROM, the decomp build and the Azahar script |
@@ -190,7 +197,11 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 
 Keep in sync with the app: `core/pd_game.c`'s addresses come from
 `NativeReader.kt`, `pd_snapshot.c` mirrors `Gen3Mon.kt` / `readNativeTelemetry`,
-and the tables are regenerated (`make tables`) whenever the app's change.
+and the tables are regenerated (`make tables`) whenever the app's change. CI's
+"Generated tables in sync with the app" job fails when they weren't: re-running
+the generators must change nothing. That is how an upstream data change (a new
+guide page, a moved address, item descriptions moving to the ROM) reaches the
+ports instead of being noticed months later.
 
 GPU notes (found in Azahar): textures are written by the CPU straight into
 linear memory in the tiled order, top row first (v = 1). Display transfers into

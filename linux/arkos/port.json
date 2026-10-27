@@ -1,0 +1,33 @@
+{
+  "version": 4,
+  "name": "PokeDaisy.zip",
+  "items": [
+    "PokeDaisy.sh",
+    "pokedaisy"
+  ],
+  "items_opt": [],
+  "attr": {
+    "title": "PokeDaisy",
+    "porter": [
+      "monosystems"
+    ],
+    "desc": "A Game Boy Advance player for Pokemon games with PokeDaisy's companion beside the game: party, bag, region map, a spoiler free guide, the Pokedex, battle matchups and the trainer card, all read from the running game. Based on PokeDaisy by Lidor Itzhari.",
+    "desc_md": null,
+    "inst": "Put your .gba games in /roms/gba. FireRed, LeafGreen and Emerald (English) also get the companion; every other GBA game plays without it.",
+    "inst_md": null,
+    "genres": [
+      "emulator"
+    ],
+    "image": null,
+    "rtr": true,
+    "exp": false,
+    "runtime": [],
+    "store": [],
+    "availability": "full",
+    "reqs": [],
+    "arch": [
+      "aarch64"
+    ],
+    "min_glibc": "2.28"
+  }
+}

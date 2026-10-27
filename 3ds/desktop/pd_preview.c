@@ -6,7 +6,10 @@
 //   pd_preview <fixture dir> <BPRE|BPGE|BPEE> <out dir> <name>
 //
 // writes <name>-party.png, -pressed, -summary, -battle, -bag, -bag-item,
-// -bag-scrolled, -bag-pocket, -settings, -pick-screen and -confirm-save.
+// -bag-scrolled, -bag-pocket, -settings, -pick-screen, -confirm-save, the MAP,
+// the DEX (list, entry, EVOLVE, next, the other dex), the GUIDE and the CARD.
+// With a ROM whose map art the port finds, the MAP shots come too; without one
+// they are skipped, and the DEX needs a ROM with its tables.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -284,7 +287,7 @@ int main(int argc, char** argv) {
     // MAP: where the player is, a tapped place, the cursor's other size, PLACES.
     tap(&p, HIT_TAB + PD_TAB_MAP, 0);
     shot(out, name, "map", px);
-    if (game.rom) {
+    if (has_hit(&p, HIT_MAP)) {
         tap(&p, HIT_MAP, 0);
         shot(out, name, "map-tapped", px);
         ui.mapBlink = true;
@@ -308,6 +311,15 @@ int main(int argc, char** argv) {
         ui.dexOpen = 6;
         draw(&p);
         shot(out, name, "dex-entry", px);
+        if (has_hit(&p, HIT_DEX_EVOLVE)) {
+            tap(&p, HIT_DEX_EVOLVE, 0);
+            shot(out, name, "dex-evolve", px);
+            if (has_hit(&p, HIT_DEX_EVO_ROW)) {
+                tap(&p, HIT_DEX_EVO_ROW, 0);
+                shot(out, name, "dex-evolve-next", px);
+            }
+            tap(&p, HIT_DEX_INFO, 0);
+        }
         tap(&p, HIT_DEX_NEXT, 0);
         shot(out, name, "dex-next", px);
         tap(&p, HIT_BACK, 0);
@@ -418,25 +430,30 @@ int main(int argc, char** argv) {
         if (pd_card_render(&game, &card, true, true, true, img)) card_png(out, name, "card-back-full", img);
 
         // The CARD tab, from SETTINGS: the card, its colon blinked off, a flip
-        // (squashing, then opening on the back) and the back.
+        // (squashing, then opening on the back) and the back. A ROM without the
+        // card's art has no button to tap.
         ui.overlay = PD_OVERLAY_NONE;
         tap(&p, HIT_TAB + PD_TAB_SETTINGS, 0);
         shot(out, name, "card-settings", px);
-        tap(&p, HIT_OPEN_CARD, 0);
-        shot(out, name, "card", px);
-        pd_ui_tick(&ui, 1000);
-        draw(&p);
-        shot(out, name, "card-colon", px);
-        tap(&p, HIT_CARD, 0);
-        pd_ui_tick(&ui, 90);
-        draw(&p);
-        shot(out, name, "card-flip-1", px);
-        pd_ui_tick(&ui, 110);
-        draw(&p);
-        shot(out, name, "card-flip-2", px);
-        pd_ui_tick(&ui, 200);
-        draw(&p);
-        shot(out, name, "card-back", px);
+        if (has_hit(&p, HIT_OPEN_CARD)) {
+            tap(&p, HIT_OPEN_CARD, 0);
+            shot(out, name, "card", px);
+            pd_ui_tick(&ui, 1000);
+            draw(&p);
+            shot(out, name, "card-colon", px);
+            if (has_hit(&p, HIT_CARD)) {
+                tap(&p, HIT_CARD, 0);
+                pd_ui_tick(&ui, 90);
+                draw(&p);
+                shot(out, name, "card-flip-1", px);
+                pd_ui_tick(&ui, 110);
+                draw(&p);
+                shot(out, name, "card-flip-2", px);
+                pd_ui_tick(&ui, 200);
+                draw(&p);
+                shot(out, name, "card-back", px);
+            }
+        }
     }
 
     // The decoded party, for checking against the app's tests.

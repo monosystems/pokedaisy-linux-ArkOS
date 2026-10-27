@@ -55,6 +55,9 @@ struct pd_config {
     uint32_t regionalOrder;    // u16 national numbers; 0 = national 1..regionalCount
     int regionalCount;
     const char* regionName;
+    // gEvolutionTable (the app's PokedexTables.evolutions): 5 rows of
+    // {u16 method, u16 param, u16 target, pad} per species. 0 = not located.
+    uint32_t evolutions;
     // ... and the save: SaveBlock2's owned / seen flags, SaveBlock1's two
     // copies of seen (all must agree), the National Dex byte.
     uint32_t dexSeenCopy1, dexSeenCopy2; // in SaveBlock1

@@ -17,6 +17,27 @@ permissions:
   contents: read
 
 jobs:
+  # The 3DS/Linux port reads the app's tables through generated C
+  # (3ds/core/*_gen.c). Upstream moves those Kotlin tables now and then - item
+  # descriptions, for one, went from a bundled table to the ROM - so the
+  # generators have to be re-run in the same commit. This fails when they aren't,
+  # which is how an upstream data change reaches the ports instead of being
+  # missed.
+  tables:
+    name: Generated tables in sync with the app
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - run: |
+          python3 3ds/tools/gen_tables.py
+          python3 3ds/tools/gen_map_tables.py
+          python3 3ds/tools/gen_guide.py
+      - name: Nothing may change
+        run: |
+          git diff --exit-code -- \
+            3ds/core/pd_tables_gen.c 3ds/core/pd_guide_gen.c 3ds/core/pd_map_gen.c
+
   app:
     name: Unit tests + debug build
     runs-on: ubuntu-latest
@@ -111,3 +132,97 @@ jobs:
       - run: npm ci
       - run: node --test test/docs.test.js test/docsearch.test.js
       - run: npm run build
+
+  # The Linux port (linux/PLAN.md): libmgba plus the SDL2 host, and the headless
+  # smoke test - no game needed, it writes its own ROM, runs it through the real
+  # emulator and checks the screenshot. Fails on a broken host build or a
+  # rendering regression.
+  linux:
+    name: Linux port (x86_64 build + smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          submodules: recursive
+
+      - name: SDL2
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+
+      - name: Build
+        run: |
+          cmake -S linux -B linux/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build linux/build -j"$(nproc)"
+
+      - name: Headless smoke test
+        run: ./linux/test/smoke.sh
+
+  # The same screens under AddressSanitizer. It already caught a use after free
+  # at exit (mCoreConfigDeinit after core->deinit) and the ROM size mGBA reports
+  # instead of the file's; both were silent crashes on the handheld.
+  linux-asan:
+    name: Linux port (ASan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          submodules: recursive
+
+      - name: SDL2
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+
+      - name: Build (ASan)
+        run: |
+          cmake -S linux -B build-asan -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer -O1 -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"
+          cmake --build build-asan --parallel "$(nproc)"
+
+      - name: Headless smoke test under ASan
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+        run: ./linux/test/smoke.sh build-asan
+
+  # The handheld build, on a native arm64 runner: the same Debian buster
+  # container linux/arkos/build.sh uses (glibc 2.28, so ArkOS4Clone's 2.30 runs
+  # it without the glibc242 wrapper), the headless smoke test with the real
+  # aarch64 binary, and the PortMaster zip as the artifact. If that runner label
+  # ever goes away, the fallback is ubuntu-latest plus docker/setup-qemu-action
+  # and `docker run --platform linux/arm64` around the same commands.
+  linux-arm64:
+    name: Linux port (aarch64 zip)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    container: debian:buster
+    steps:
+      - name: Point apt at the archive (buster is EOL)
+        run: |
+          rm -f /etc/apt/sources.list.d/*
+          printf 'deb http://archive.debian.org/debian buster main\ndeb http://archive.debian.org/debian-security buster/updates main\n' \
+            > /etc/apt/sources.list
+          apt-get -o Acquire::Check-Valid-Until=false update -qq
+          apt-get install -y -qq build-essential cmake libsdl2-dev python3 zip >/dev/null
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          submodules: recursive
+
+      - name: Build (aarch64)
+        run: |
+          cmake -S linux -B build-arm64 -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-arm64 --parallel "$(nproc)"
+          strip build-arm64/pokedaisy
+          file build-arm64/pokedaisy
+
+      - name: Headless smoke test (the real aarch64 binary)
+        run: ./linux/test/smoke.sh build-arm64
+
+      - name: PortMaster package
+        run: ./linux/arkos/build.sh --pack-only
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: PokeDaisy-aarch64
+          path: linux/arkos/PokeDaisy.zip
+          retention-days: 30

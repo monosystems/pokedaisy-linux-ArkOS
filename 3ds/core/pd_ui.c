@@ -306,6 +306,12 @@ bool pd_ui_back(struct pd_ui* ui) {
         return true;
     }
     if (ui->tab == PD_TAB_DEX && ui->dexOpen) {
+        // From EVOLVE back to INFO first, then out to the list.
+        if (ui->dexSection) {
+            ui->dexSection = 0;
+            ui->dexEvoScroll = 0;
+            return true;
+        }
         ui->dexOpen = 0;
         return true;
     }

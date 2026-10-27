@@ -135,6 +135,199 @@ bool pd_dex_sprite(const struct pd_game* g, int species, uint32_t* out) {
     return true;
 }
 
+// --- EVOLVE (the app's EvolutionSource / DexDetails.family) ------------------
+//
+// gEvolutionTable: 5 rows of {u16 method, u16 param, u16 target, pad} per
+// species. Read whole, once per ROM (412 * 5 * 8 bytes), and checked with the
+// app's probe (BULBASAUR evolves at LEVEL 16 into IVYSAUR) so a hack that moved
+// the table never gets wrong data.
+#define EVO_PER_MON 5
+#define EVO_ROW 8
+#define EVO_LEVEL 4
+#define EVO_FRIENDSHIP 1
+#define EVO_FRIENDSHIP_DAY 2
+#define EVO_FRIENDSHIP_NIGHT 3
+#define EVO_TRADE 5
+#define EVO_TRADE_ITEM 6
+#define EVO_ITEM 7
+#define EVO_LEVEL_ATK_GT_DEF 8
+#define EVO_LEVEL_ATK_EQ_DEF 9
+#define EVO_LEVEL_ATK_LT_DEF 10
+#define EVO_LEVEL_SILCOON 11
+#define EVO_LEVEL_CASCOON 12
+#define EVO_LEVEL_NINJASK 13
+#define EVO_LEVEL_SHEDINJA 14
+#define EVO_BEAUTY 15
+#define EVO_FAMILY_MEMBERS 40 // the app's cap on a family walk
+
+static unsigned evoRom;
+static uint16_t evoTable[SPECIES_COUNT][EVO_PER_MON][3];
+static bool evoOk;
+
+static void build_evolutions(const struct pd_game* g) {
+    if (evoRom == pd_rom_id(g)) return;
+    evoRom = pd_rom_id(g);
+    evoOk = false;
+    memset(evoTable, 0, sizeof(evoTable));
+    const struct pd_config* cfg = g->cfg;
+    if (!cfg || !cfg->evolutions || !pd_dex_available(g)) return;
+    const uint8_t* t = pd_rom_at(g, cfg->evolutions, SPECIES_COUNT * EVO_PER_MON * EVO_ROW);
+    if (!t) return;
+    for (int s = 0; s < SPECIES_COUNT; s++) {
+        for (int i = 0; i < EVO_PER_MON; i++) {
+            const uint8_t* r = t + (s * EVO_PER_MON + i) * EVO_ROW;
+            evoTable[s][i][0] = u16(r);     // method
+            evoTable[s][i][1] = u16(r + 2); // param
+            evoTable[s][i][2] = u16(r + 4); // target
+        }
+    }
+    evoOk = evoTable[1][0][0] == EVO_LEVEL && evoTable[1][0][1] == 16 && evoTable[1][0][2] == 2;
+}
+
+bool pd_dex_has_evolutions(const struct pd_game* g) {
+    build_evolutions(g);
+    return evoOk;
+}
+
+// The app's `link()`: Megas / EVO_NONE (0xF0 and up), no target and the
+// species itself are not links; a method past EVO_BEAUTY is a special one.
+static bool evo_link(int from, int i, struct pd_evo_link* out) {
+    int method = evoTable[from][i][0], param = evoTable[from][i][1], target = evoTable[from][i][2];
+    if (method == 0 || method >= 0xF0 || target == 0 || target == from || target >= SPECIES_COUNT) return false;
+    out->from = from;
+    out->to = target;
+    out->method = method;
+    out->param = param;
+    return true;
+}
+
+static int evo_outgoing(int s, struct pd_evo_link* out) {
+    int n = 0;
+    for (int i = 0; i < EVO_PER_MON; i++) {
+        if (evo_link(s, i, &out[n])) n++;
+    }
+    return n;
+}
+
+static bool evo_parent(int s) {
+    struct pd_evo_link l;
+    for (int from = 1; from < SPECIES_COUNT; from++) {
+        for (int i = 0; i < EVO_PER_MON; i++) {
+            if (evo_link(from, i, &l) && l.to == s) return true;
+        }
+    }
+    return false;
+}
+
+static bool evo_same(const struct pd_evo_link* a, const struct pd_evo_link* b) {
+    return a->from == b->from && a->to == b->to && a->method == b->method && a->param == b->param;
+}
+
+int pd_dex_family(const struct pd_game* g, int species, struct pd_evo_link* out, int max) {
+    build_evolutions(g);
+    if (!evoOk || max <= 0) return -1;
+    if (species < 1 || species >= SPECIES_COUNT) return 0;
+
+    // The connected family: everything reachable both ways, capped like the
+    // app (a corrupted table must not walk forever).
+    static bool member[SPECIES_COUNT];
+    static int queue[EVO_FAMILY_MEMBERS];
+    static struct pd_evo_link links[EVO_PER_MON];
+    memset(member, 0, sizeof(member));
+    int head = 0, tail = 0, members = 0;
+    member[species] = true;
+    queue[tail++] = species;
+    members++;
+    while (head < tail && members < EVO_FAMILY_MEMBERS) {
+        int s = queue[head++];
+        for (int from = 1; from < SPECIES_COUNT && members < EVO_FAMILY_MEMBERS; from++) {
+            for (int i = 0; i < EVO_PER_MON; i++) {
+                struct pd_evo_link l;
+                if (evo_link(from, i, &l) && l.to == s && !member[from]) {
+                    member[from] = true;
+                    queue[tail++] = from;
+                    members++;
+                }
+            }
+        }
+        int n = evo_outgoing(s, links);
+        for (int i = 0; i < n && members < EVO_FAMILY_MEMBERS; i++) {
+            if (!member[links[i].to]) {
+                member[links[i].to] = true;
+                queue[tail++] = links[i].to;
+                members++;
+            }
+        }
+    }
+
+    // Chain order: walk from the family's roots, breadth first (the app's
+    // familyOf), so BULBASAUR -> IVYSAUR comes before IVYSAUR -> VENUSAUR.
+    int count = 0;
+    static bool seen[SPECIES_COUNT];
+    static int walk[EVO_FAMILY_MEMBERS];
+    memset(seen, 0, sizeof(seen));
+    head = tail = 0;
+    for (int i = 0; i < members; i++) {
+        if (!evo_parent(queue[i])) walk[tail++] = queue[i];
+    }
+    if (tail == 0) walk[tail++] = species;
+    while (head < tail) {
+        int s = walk[head++];
+        if (seen[s]) continue;
+        seen[s] = true;
+        int n = evo_outgoing(s, links);
+        for (int i = 0; i < n && count < max; i++) {
+            bool dup = false;
+            for (int j = 0; j < count; j++) {
+                if (evo_same(&out[j], &links[i])) dup = true;
+            }
+            if (!dup) out[count++] = links[i];
+            if (tail < EVO_FAMILY_MEMBERS) walk[tail++] = links[i].to;
+        }
+    }
+    return count;
+}
+
+const char* pd_evo_how(const struct pd_game* g, int method, int param, char* buf, size_t len) {
+    bool level = param >= 1 && param <= 100;
+    const char* item;
+    switch (method) {
+    case EVO_FRIENDSHIP: snprintf(buf, len, "Level up, high friendship"); break;
+    case EVO_FRIENDSHIP_DAY: snprintf(buf, len, "Level up, high friendship, by day"); break;
+    case EVO_FRIENDSHIP_NIGHT: snprintf(buf, len, "Level up, high friendship, at night"); break;
+    case EVO_LEVEL:
+    case EVO_LEVEL_NINJASK: snprintf(buf, len, level ? "LV %d" : "Level up", param); break;
+    case EVO_LEVEL_ATK_GT_DEF:
+        snprintf(buf, len, level ? "LV %d, ATTACK > DEFENSE" : "Level up, ATTACK > DEFENSE", param);
+        break;
+    case EVO_LEVEL_ATK_EQ_DEF:
+        snprintf(buf, len, level ? "LV %d, ATTACK = DEFENSE" : "Level up, ATTACK = DEFENSE", param);
+        break;
+    case EVO_LEVEL_ATK_LT_DEF:
+        snprintf(buf, len, level ? "LV %d, ATTACK < DEFENSE" : "Level up, ATTACK < DEFENSE", param);
+        break;
+    case EVO_LEVEL_SILCOON:
+    case EVO_LEVEL_CASCOON:
+        snprintf(buf, len, level ? "LV %d, by chance" : "Level up, by chance", param);
+        break;
+    case EVO_LEVEL_SHEDINJA:
+        snprintf(buf, len, level ? "LV %d, with a spare slot" : "Level up, with a spare slot", param);
+        break;
+    case EVO_TRADE: snprintf(buf, len, "Trade"); break;
+    case EVO_TRADE_ITEM:
+        item = pd_item_name(g, param);
+        snprintf(buf, len, item && *item ? "Trade holding %s" : "Trade holding an item", item ? item : "");
+        break;
+    case EVO_ITEM:
+        item = pd_item_name(g, param);
+        snprintf(buf, len, item && *item ? "Use %s" : "Use an item", item ? item : "");
+        break;
+    case EVO_BEAUTY: snprintf(buf, len, "Level up, BEAUTY %d+", param); break;
+    default: snprintf(buf, len, "Special condition"); break;
+    }
+    return buf;
+}
+
 void pd_dex_height(int dm, char* buf, int len) {
     long inches = 10000L * dm / 254;
     if (inches % 10 >= 5) inches += 10;

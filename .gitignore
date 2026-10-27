@@ -61,3 +61,11 @@ __pycache__/
 # 3DS build output (3ds/README.md)
 *.3dsx
 *.smdh
+# Linux port build output (linux/PLAN.md)
+/linux/build/
+/linux/build-*/
+/build-arm64/
+/build-asan*/
+/linux/arkos/*.zip
+# The handheld's ssh address for linux/arkos/deploy.sh.
+/linux/arkos/deploy.conf

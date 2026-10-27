@@ -107,8 +107,10 @@ struct pd_ui {
 
     // POKéDEX: the list's scroll, the open entry (national number, 0 = the
     // list), and which dex shows (-1 = the save's own: National once it has
-    // it, else the regional one).
+    // it, else the regional one). An entry's section (0 INFO, 1 EVOLVE) and
+    // the EVOLVE family's scroll.
     int dexScroll, dexOpen, dexNational;
+    int dexSection, dexEvoScroll;
     // MAP: the page shown (-1 = the player's), the tapped place, the cursor's blink.
     int mapPage, mapSel, mapDungeon, mapSelTx, mapSelTy;
     bool mapBlink;

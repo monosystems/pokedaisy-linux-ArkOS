@@ -37,6 +37,10 @@ enum {
     HIT_DEX_TOGGLE = 1900,
     HIT_DEX_PREV = 1901,
     HIT_DEX_NEXT = 1902,
+    HIT_DEX_INFO = 1903,    // the entry's INFO / EVOLVE section chips
+    HIT_DEX_EVOLVE = 1904,
+    HIT_DEX_EVO_LIST = 1905,
+    HIT_DEX_EVO_ROW = 1910, // + family link
     HIT_GUIDE_PAGE = 2000, // + page
     HIT_GUIDE_ROW = 2100,  // + entry
     HIT_GUIDE_LIST = 2900,

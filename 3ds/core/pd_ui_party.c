@@ -36,16 +36,19 @@ static void gender_mark(struct pd_canvas* c, int x, int y, enum pd_gender g) {
 static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, int x, int y, int w,
                        int h, const struct pd_mon* m, int slot) {
     char buf[40];
+    // Every slot is a hit, filled or not: a party of one still lets the cursor
+    // walk the whole grid (OK on an empty slot does nothing, see pd_ui_tap).
+    ui_add_hit(ui, x, y, w, h, HIT_SLOT + slot);
+    bool pressed = ui->pressedId == HIT_SLOT + slot;
     if (!m) {
         // An empty slot: just its outline over the backdrop.
-        pd_round_rect(c, x, y, w, h, 5, SLOT_NORMAL.outline);
+        pd_round_rect(c, x, y, w, h, 5, pressed ? SLOT_SELECTED.outline : SLOT_NORMAL.outline);
         pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 4, PD_BACKDROP_B);
         return;
     }
     bool egg = m->species == PD_SPECIES_EGG;
     bool fainted = !egg && m->hp == 0;
-    const struct slot_colors* col = ui->pressedId == HIT_SLOT + slot ? &SLOT_SELECTED
-        : fainted ? &SLOT_FAINTED : &SLOT_NORMAL;
+    const struct slot_colors* col = pressed ? &SLOT_SELECTED : fainted ? &SLOT_FAINTED : &SLOT_NORMAL;
     pd_round_rect(c, x, y, w, h, 5, col->outline);
     pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 4, col->light);
     pd_round_rect(c, x + 2, y + 2, w - 4, h - 4, 3, col->fill);
@@ -70,7 +73,6 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     } else {
         pd_text_fit(c, tx, y + 3, x + w - 8 - tx, name, SLOT_TEXT, SLOT_TEXT_SHADOW);
     }
-    ui_add_hit(ui, x, y, w, h, HIT_SLOT + slot);
 }
 
 static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m) {
@@ -125,6 +127,11 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
 }
 
 void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
+    // An empty slot is tappable too (the cursor walks all six), so a slot that
+    // has no Pokémon must not open its summary.
+    if (ui->summarySlot >= s->partyCount) {
+        ui->summarySlot = -1;
+    }
     if (ui->summarySlot >= 0) {
         summary(ui, c, g, &s->party[ui->summarySlot]);
         return;

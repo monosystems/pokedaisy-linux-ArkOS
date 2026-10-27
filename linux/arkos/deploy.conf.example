@@ -1,0 +1,10 @@
+# Copy this file to deploy.conf (beside it) and fill in the handheld.
+# deploy.conf is not tracked; the environment variables PD_HOST, PD_DEST,
+# PD_ROMS, PD_BINARY and PD_LOG override these.
+#
+# host=root@192.168.1.42
+# dest=/roms/ports/pokedaisy
+# roms=/roms/gba
+#
+# Or a mounted card instead of ssh (the pokedaisy folder on it):
+# local=/Volumes/EASYROMS/ports/pokedaisy

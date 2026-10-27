@@ -79,11 +79,12 @@ def main():
     def strings(name, decl):
         return {int(k): v for k, v in re.findall(r'(\d+) to "([^"]*)"', block(read(name), decl))}
 
+    # Item names only: upstream stopped bundling descriptions (the app reads them
+    # from the ROM's gItems, RomItemText.kt), so the frozen pair lives in
+    # pd_item_desc.c until pd_item_description reads gItems too.
     item_tables = [
         ("pd_item_names_firered", strings("items", "itemNamesFireRedGame")),
-        ("pd_item_desc_firered", strings("items", "itemDescriptionsFireRedGame")),
         ("pd_item_names_emerald", strings("items", "itemNamesEmeraldGame")),
-        ("pd_item_desc_emerald", strings("items", "itemDescriptionsEmeraldGame")),
     ]
 
     # Each species' two types (the same twice for one type), by internal id.
@@ -149,7 +150,7 @@ def main():
         f.write("\n".join(out))
     print(f"wrote {os.path.relpath(OUT, ROOT)}: {len(species)} species, {len(moves)} moves, "
           f"{len(chart)} chart entries, {len(fr_secs)}/{len(em_secs)} map sections, "
-          f"{len(item_tables[0][1])}/{len(item_tables[2][1])} items, {len(gender)} gender ratios")
+          f"{len(item_tables[0][1])}/{len(item_tables[1][1])} item names, {len(gender)} gender ratios")
 
 
 if __name__ == "__main__":

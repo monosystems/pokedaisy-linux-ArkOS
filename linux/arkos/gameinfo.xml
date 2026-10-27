@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<gameList>
+  <game>
+    <path>./PokeDaisy.sh</path>
+    <name>PokeDaisy</name>
+    <desc>Game Boy Advance player with PokeDaisy's live companion: party, bag, map, guide, Pokedex, battle matchups and trainer card, read from the game as you play.</desc>
+    <image>./screenshot.png</image>
+    <thumbnail>./screenshot.png</thumbnail>
+    <releasedate>20260101T000000</releasedate>
+    <developer>Lidor Itzhari</developer>
+    <publisher>monosystems</publisher>
+    <genre>Emulator</genre>
+    <players>1</players>
+  </game>
+</gameList>
