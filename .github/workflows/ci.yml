@@ -205,7 +205,9 @@ jobs:
           printf 'deb http://archive.debian.org/debian buster main\ndeb http://archive.debian.org/debian-security buster/updates main\n' \
             > /etc/apt/sources.list
           apt-get -o Acquire::Check-Valid-Until=false update -qq
-          apt-get install -y -qq build-essential cmake libsdl2-dev python3 zip >/dev/null
+          # git: actions/checkout runs inside this container, and debian:buster
+          # doesn't bring it (its first run failed there, before the build).
+          apt-get install -y -qq build-essential cmake libsdl2-dev python3 zip git ca-certificates file >/dev/null
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -215,7 +217,8 @@ jobs:
         run: |
           cmake -S linux -B build-arm64 -DCMAKE_BUILD_TYPE=Release
           cmake --build build-arm64 --parallel "$(nproc)"
-          strip build-arm64/pokedaisy
+          # No strip: the crash handler's offset resolves with addr2line against
+          # this exact binary (linux/arkos/build.sh says the same).
           file build-arm64/pokedaisy
 
       - name: Headless smoke test (the real aarch64 binary)
