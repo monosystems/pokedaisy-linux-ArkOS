@@ -9,13 +9,14 @@ guide, dex, battle, trainer card) is drawn as an overlay over it. The companion
 is the portable C core from [`3ds/core`](../3ds/core) - unchanged, shared with
 the 3DS port - so both ports read and draw the game the same way.
 
-**Status: phase 2.** The host boots a GBA game with sound, controller input,
+**Status: phase 3.** The host boots a GBA game with sound, controller input,
 saves, save backups, one save state and fast-forward; the companion runs as an
 overlay over the game, driven by a D-pad cursor instead of the 3DS's stylus; and
 started without a game it lists `/roms/gba` so the PortMaster port can be
-launched from the Ports menu. `arkos/` holds the port package and its build
-script. What is left is the first run on the handheld itself;
-[`PLAN.md`](PLAN.md) has the phases.
+launched from the Ports menu. `arkos/` holds the port package, its build script
+and `deploy.sh`. It has run on the R36S - the DEX's EVOLVE was checked there;
+frame times per SCREEN mode are still to be recorded. [`PLAN.md`](PLAN.md) has
+the phases.
 
 ## Build (desktop)
 

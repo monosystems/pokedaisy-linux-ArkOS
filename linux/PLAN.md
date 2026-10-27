@@ -11,16 +11,17 @@ in which order.
 
 ## Status
 
-**Phase 0–2 done.** Everything below is in `linux/` unless it says otherwise,
-and every phase ends with the headless smoke test (`linux/test/smoke.sh`) and
-the CI jobs (`.github/workflows/ci.yml`: x86_64, ASan, aarch64 + PortMaster zip).
+**Phase 0–2 done; phase 3 started (it runs on the R36S).** Everything below is
+in `linux/` unless it says otherwise, and every phase ends with the headless
+smoke test (`linux/test/smoke.sh`) and the CI jobs
+(`.github/workflows/ci.yml`: x86_64, ASan, aarch64 + PortMaster zip).
 
 | Phase | What | State |
 | - | - | - |
 | 0 | libmgba in-process behind an SDL2 window, the frame on screen, no companion | done |
 | 1 | The host: sound, pad and keyboard, saves and their backups, one save state, fast-forward, the `/roms/gba` launcher, resume | done |
 | 2 | The companion over the game: `pd_ui` at 320x240 scaled 2x, the D-pad cursor over its hits, SETTINGS, the PortMaster package | done |
-| 3 | The first run on the R36S itself | **next** |
+| 3 | The first run on the R36S itself | started: it boots, plays and the DEX's EVOLVE was checked on the device; frame times per SCREEN mode still to record |
 | 4 | Content parity with the app's companion | planned |
 | 5 | More games and languages, then the app's field actions | planned |
 
@@ -40,6 +41,11 @@ way out.
   that is mounted exFAT.
 - Install the zip from `linux/arkos/build.sh` through PortMaster, not only by
   hand, and leave the game with `START+SELECT`.
+
+**Done so far:** it boots on the R36S, plays with sound, writes saves and the
+companion opens; the DEX's EVOLVE was checked there. Still open: the `--stats`
+numbers for `fit`, `integer` and `stretch`; a save state on an exFAT card; and
+installing the zip through PortMaster instead of copying the binary.
 
 Nothing in phases 4–5 starts before this run: a crash or a slow path found there
 can change what is worth porting next.
