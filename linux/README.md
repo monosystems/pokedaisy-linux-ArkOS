@@ -9,14 +9,15 @@ guide, dex, battle, trainer card) is drawn as an overlay over it. The companion
 is the portable C core from [`3ds/core`](../3ds/core) - unchanged, shared with
 the 3DS port - so both ports read and draw the game the same way.
 
-**Status: phase 3.** The host boots a GBA game with sound, controller input,
+**Status: phase 4.** The host boots a GBA game with sound, controller input,
 saves, save backups, one save state and fast-forward; the companion runs as an
 overlay over the game, driven by a D-pad cursor instead of the 3DS's stylus; and
 started without a game it lists `/roms/gba` so the PortMaster port can be
 launched from the Ports menu. `arkos/` holds the port package, its build script
-and `deploy.sh`. It has run on the R36S: the DEX's EVOLVE was checked there, and
-all three SCREEN modes hold 58.5 fps with 9.9 ms in the emulator (`PLAN.md`
-phase 3 has the table). [`PLAN.md`](PLAN.md) has the phases.
+and `deploy.sh`. Phase 3 is closed: it has run on the R36S, the DEX's EVOLVE was
+checked there, all three SCREEN modes hold 58.5 fps with 9.9 ms in the emulator
+(`PLAN.md` phase 3 has the table), and the release zip installs through
+PortMaster's autoinstall folder. [`PLAN.md`](PLAN.md) has the phases.
 
 ## Build (desktop)
 
@@ -220,6 +221,17 @@ linux/arkos/deploy.sh --dry-run                  # show the ssh/scp commands
 EmulationStation is stopped while the game runs and started again afterwards
 (`--keep-es` leaves it stopped, `--stop-es` stops it for a copy alone).
 `PD_HOST`, `PD_DEST`, `PD_ROMS`, `PD_BINARY` and `PD_LOG` override `deploy.conf`.
+
+Without ssh, `--local DIR` writes to the mounted card instead, where `DIR` is the
+`pokedaisy` folder on it (`--local /Volumes/EASYROMS/ports/pokedaisy`, or
+`--full` for the Ports-menu files too). It writes with `dd conv=fsync`, because
+macOS's exFAT driver is unreliable for `rename()`, and checks the SHA-256 of what
+landed on the card.
+
+Copy zips and launchers with `COPYFILE_DISABLE=1`, or delete the `._*` files that
+macOS leaves beside them: they are not zips or scripts, and PortMaster fails to
+read each one it finds in `/roms/ports` (`invalid start byte`) and lists it as an
+unknown port.
 
 `--log` is the only way to see what happened on the device: pass it and read the
 file (the deploy script passes `/tmp/pd.log` and tails it). SDL comes from the

@@ -27,7 +27,7 @@ the RK3326 shares its CPU with the emulator.
       with the companion closed and open (`linux/PLAN.md` phase 3 has the table;
       the mode is `screen=` in `pokedaisy.ini` and the log names it). Gates P5.1,
       P5.2 and P5.6.
-- [ ] **P0.2** Save state and save backup on the exFAT card (`.sav`/`.srm`,
+- [x] **P0.2** Save state and save backup on the exFAT card (`.sav`/`.srm`,
       `.backup-*.sav`, `pokedaisy-states/*.ss1` and `.resume`), then the PortMaster
       install from the zip's `autoinstall` folder rather than a copied binary.
       Closes the rest of phase 3.

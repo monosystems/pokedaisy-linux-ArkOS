@@ -12,7 +12,7 @@ ports, with the effort each missing one needs, is [`../PORTING.md`](../PORTING.m
 
 ## Status
 
-**Phase 0–2 done; phase 3 started (it runs on the R36S).** Everything below is
+**Phase 0–3 done; phase 4 (content parity) is next.** Everything below is
 in `linux/` unless it says otherwise, and every phase ends with the headless
 smoke test (`linux/test/smoke.sh`) and the CI jobs
 (`.github/workflows/ci.yml`: x86_64, ASan, aarch64 + PortMaster zip).
@@ -22,8 +22,8 @@ smoke test (`linux/test/smoke.sh`) and the CI jobs
 | 0 | libmgba in-process behind an SDL2 window, the frame on screen, no companion | done |
 | 1 | The host: sound, pad and keyboard, saves and their backups, one save state, fast-forward, the `/roms/gba` launcher, resume | done |
 | 2 | The companion over the game: `pd_ui` at 320x240 scaled 2x, the D-pad cursor over its hits, SETTINGS, the PortMaster package | done |
-| 3 | The first run on the R36S itself | started: it boots, plays and the DEX's EVOLVE was checked on the device; frame times per SCREEN mode still to record |
-| 4 | Content parity with the app's companion | planned |
+| 3 | The first run on the R36S itself | done: it boots and plays, the DEX's EVOLVE works, the three SCREEN modes are measured, and the zip installs through PortMaster |
+| 4 | Content parity with the app's companion | next: the P1 items in `TODO.md` |
 | 5 | More games and languages, then the app's field actions | planned |
 
 ## Phase 3 — the handheld
@@ -69,14 +69,16 @@ frames. All three modes came out within 0.1 fps of each other, from 480x320 whol
 pixels to 640x480 stretched, so the fill rate does not limit this game. Because
 the present waits for the panel, the game runs 2% under the GBA's 59.73 fps.
 
-**Done so far:** it boots on the R36S, plays with sound, writes saves and the
-companion opens; the DEX's EVOLVE was checked there. The three SCREEN modes are
-measured (the table above), and the save backup, the `.resume` and the one state
-slot work on an exFAT card. Still open: installing the zip through PortMaster
-instead of copying the binary.
+**Done:** it boots on the R36S, plays with sound, writes saves and the companion
+opens; the DEX's EVOLVE was checked there; the three SCREEN modes are measured
+(the table above); the save backup, the `.resume` and the one state slot work on
+an exFAT card; and the zip installs through PortMaster's `autoinstall` folder
+(`/roms/tools/PortMaster/autoinstall` on this image, and PortMaster logs
+`Unknown port: PokeDaisy.sh` afterwards, which is only its catalogue missing the
+port).
 
-Nothing in phases 4–5 starts before this run: a crash or a slow path found there
-can change what is worth porting next.
+With this run the gate is open: phases 4–5 can start, and about 7 ms of every
+frame turned out to be idle, so drawing over the game is affordable.
 
 ## Phase 4 — content parity
 
