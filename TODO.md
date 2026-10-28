@@ -21,7 +21,7 @@ checked with `python3 porting_stats.py` when the item lands.
 Nothing that puts more pixels over the game starts before this is recorded, because
 the RK3326 shares its CPU with the emulator.
 
-- [ ] **P0.1** Run the R36S from the Ports menu (its launch script already passes
+- [x] **P0.1** Run the R36S from the Ports menu (its launch script already passes
       `--stats` and writes `log.txt` into the port folder) and record frames per
       second and the emulator/drawing split for `fit`, `integer` and `stretch`,
       with the companion closed and open (`linux/PLAN.md` phase 3 has the table;

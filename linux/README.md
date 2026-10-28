@@ -14,9 +14,9 @@ saves, save backups, one save state and fast-forward; the companion runs as an
 overlay over the game, driven by a D-pad cursor instead of the 3DS's stylus; and
 started without a game it lists `/roms/gba` so the PortMaster port can be
 launched from the Ports menu. `arkos/` holds the port package, its build script
-and `deploy.sh`. It has run on the R36S - the DEX's EVOLVE was checked there;
-frame times per SCREEN mode are still to be recorded. [`PLAN.md`](PLAN.md) has
-the phases.
+and `deploy.sh`. It has run on the R36S: the DEX's EVOLVE was checked there, and
+all three SCREEN modes hold 58.5 fps with 9.9 ms in the emulator (`PLAN.md`
+phase 3 has the table). [`PLAN.md`](PLAN.md) has the phases.
 
 ## Build (desktop)
 

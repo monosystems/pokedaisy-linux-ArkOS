@@ -54,24 +54,26 @@ milliseconds.
 
 | Mode | Companion closed | Companion open |
 | - | - | - |
-| `fit` | 58.5 fps, emu 9.9, draw 7.1 ms | 58.5 fps, emu 9.9, draw 7.1 ms |
-| `integer` | | |
-| `stretch` | | |
+| `fit` | 58.5 fps, emu 9.9, draw 7.1 ms | 58.4 fps, emu 9.9, draw 7.1 ms |
+| `integer` | 58.4 fps, emu 9.9, draw 7.1 ms | 58.5 fps, emu 9.9, draw 7.1 ms |
+| `stretch` | 58.4 fps, emu 9.9, draw 7.1 ms | 58.5 fps, emu 9.9, draw 7.1 ms |
 
-First run, 27.10.2026, FireRed (BPRE rev 1) standing still, new binary. The panel
-is 640x480 at 59.0 Hz, so a frame is 16.95 ms, and the frame comes out at
-17.09 ms: `draw` is the frame period minus the emulator, which is the shape of
-waiting for the panel's vblank in the present, not of GPU work. The companion
-changed nothing measurable, closed and open measured the same, and the audio pump
-is 0.01 ms. The emulator's 9.9 ms is the real cost, about 7 ms of each frame is
-idle, and a feature that needs more than that starts dropping frames. Because the
-present waits for the panel, the game runs 2% under the GBA's 59.73 fps.
+Measured on 27.10.2026 with FireRed (BPRE rev 1) standing still, new binary, in
+all three modes. The panel is 640x480 at 59.0 Hz, so a frame is 16.95 ms, and the
+frame comes out at 17.09 ms: `draw` is the frame period minus the emulator, which
+is the shape of waiting for the panel's vblank in the present, not of GPU work.
+The companion changed nothing measurable, closed and open measured the same, and
+the audio pump is 0.01 ms. The emulator's 9.9 ms is the real cost, about 7 ms of
+each frame is idle, and a feature that needs more than that starts dropping
+frames. All three modes came out within 0.1 fps of each other, from 480x320 whole
+pixels to 640x480 stretched, so the fill rate does not limit this game. Because
+the present waits for the panel, the game runs 2% under the GBA's 59.73 fps.
 
 **Done so far:** it boots on the R36S, plays with sound, writes saves and the
-companion opens; the DEX's EVOLVE was checked there. `fit` is measured (the table
-above); the save backup, the `.resume` and the one state slot work on an exFAT
-card. Still open: `integer` and `stretch`, and installing the zip through
-PortMaster instead of copying the binary.
+companion opens; the DEX's EVOLVE was checked there. The three SCREEN modes are
+measured (the table above), and the save backup, the `.resume` and the one state
+slot work on an exFAT card. Still open: installing the zip through PortMaster
+instead of copying the binary.
 
 Nothing in phases 4–5 starts before this run: a crash or a slow path found there
 can change what is worth porting next.
