@@ -33,20 +33,45 @@ sound through ArkOS's SDL2 (KMSDRM), save and state writes on the exFAT card, a
 panel mounted sideways, and the Ports-menu launch with `START+SELECT` as the only
 way out.
 
-- Run it on the R36S with `--stats --log /tmp/pd.log` and read the `stats:` and
-  `system:` lines (README "Test").
+- Run it on the R36S with `--stats` and read the `stats:` and `system:` lines
+  (README "Test"). The Ports-menu launch script already passes `--stats` and
+  writes `log.txt` into the port folder, which is the way in when there is no
+  ssh: start from the menu, play, leave with `START+SELECT`, copy the log off
+  the card.
 - Note frames per second and the emulator/drawing split for `fit`, `integer` and
   `stretch`; if drawing costs too much, the companion can stay a 320x240 texture
-  (it is one today) and only its scaling changes.
+  (it is one today) and only its scaling changes. On the card the mode is
+  `screen=` in `pokedaisy.ini` (0 whole pixels, 1 fill, 2 stretch), and the
+  startup line names it; a switch made in SETTINGS during the run logs
+  `screen: <mode>`, so one session can cover more than one mode.
 - Check the save backup, the `.resume` state and the one state slot on a card
   that is mounted exFAT.
 - Install the zip from `linux/arkos/build.sh` through PortMaster, not only by
   hand, and leave the game with `START+SELECT`.
 
+Where the numbers go: frames per second, then the emulator and drawing share in
+milliseconds.
+
+| Mode | Companion closed | Companion open |
+| - | - | - |
+| `fit` | 58.5 fps, emu 9.9, draw 7.1 ms | 58.5 fps, emu 9.9, draw 7.1 ms |
+| `integer` | | |
+| `stretch` | | |
+
+First run, 27.10.2026, FireRed (BPRE rev 1) standing still, new binary. The panel
+is 640x480 at 59.0 Hz, so a frame is 16.95 ms, and the frame comes out at
+17.09 ms: `draw` is the frame period minus the emulator, which is the shape of
+waiting for the panel's vblank in the present, not of GPU work. The companion
+changed nothing measurable, closed and open measured the same, and the audio pump
+is 0.01 ms. The emulator's 9.9 ms is the real cost, about 7 ms of each frame is
+idle, and a feature that needs more than that starts dropping frames. Because the
+present waits for the panel, the game runs 2% under the GBA's 59.73 fps.
+
 **Done so far:** it boots on the R36S, plays with sound, writes saves and the
-companion opens; the DEX's EVOLVE was checked there. Still open: the `--stats`
-numbers for `fit`, `integer` and `stretch`; a save state on an exFAT card; and
-installing the zip through PortMaster instead of copying the binary.
+companion opens; the DEX's EVOLVE was checked there. `fit` is measured (the table
+above); the save backup, the `.resume` and the one state slot work on an exFAT
+card. Still open: `integer` and `stretch`, and installing the zip through
+PortMaster instead of copying the binary.
 
 Nothing in phases 4–5 starts before this run: a crash or a slow path found there
 can change what is worth porting next.

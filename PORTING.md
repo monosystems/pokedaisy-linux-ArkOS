@@ -79,13 +79,13 @@ kept, so a row can be read next to its manual page.
 | --- | --- | --- | --- | --- | --- |
 | H-09 | Battery save next to the ROM (`.sav`) | `saves.md` | ✅ | ✅ | Same rule as mGBA's own builds. |
 | H-10 | Existing `.srm` picked up | `saves.md` | ✅ | — | `files.c` tries `.srm` before `.sav`; the 3DS host only knows `.sav`. `S` |
-| H-11 | Backup before every start, newest 10 per game | `saves.md` | ✅ | ✅ | `PD_BACKUPS` = 10 on Linux, same count in `ctr/main.c`. |
-| H-12 | A backup only when the save changed | `saves.md` | ◐ | ◐ | Not checked on either host; the file name carries the timestamp, so it can produce duplicates. `S` |
-| H-13 | Resume at the exact moment on the next start | `RESUME GAMES` | ✅ | — | Linux writes `<name>.resume` and prefers it while the save is not newer. The 3DS lists it under next steps. `M` |
+| H-11 | Backup before every start, newest 10 per game | `saves.md` | ✅ | ✅ | `PD_BACKUPS` = 10 on Linux, same count in `ctr/main.c`. Seen on the R36S: a backup on start, and another before LOAD STATE. |
+| H-12 | A backup only when the save changed | `saves.md` | ◐ | ◐ | Not checked on either host; the file name carries the timestamp, so it can produce duplicates. On the R36S two backups appeared in two minutes without the save changing. `S` |
+| H-13 | Resume at the exact moment on the next start | `RESUME GAMES` | ✅ | — | Linux writes `<name>.resume` and prefers it while the save is not newer. The 3DS lists it under next steps. Seen on the R36S, written again on leaving. `M` |
 | H-14 | Resume never overwrites a newer save | `saves.md` | ✅ | n/a | `pd_resume_is_fresh` compares the save's time. |
 | H-15 | Load another save into a game, keeping the old one | `library.md` | — | — | Library UI work, needs H-08. `M` |
 | H-16 | Restore a backup from the library | `library.md` | — | — | The files exist, the UI does not. `S` |
-| H-17 | One save state per game, save and load behind a confirmation | `saves.md` | ✅ | ✅ | `SAVESTATE_RTC` only, so a state never writes an old save back. |
+| H-17 | One save state per game, save and load behind a confirmation | `saves.md` | ✅ | ✅ | `SAVESTATE_RTC` only, so a state never writes an old save back. Seen on the R36S on the exFAT card, `state: saved` and `state: loaded`. |
 | H-18 | Ten state slots with a screenshot each | `saves.md`, `StatesScreen.kt` | — | — | Host side on Linux, so the core stays as it is. Needs a thumbnail path in both hosts. `M` |
 | H-19 | UNDO SAVE / UNDO LOAD | `saves.md` | — | — | Two more files per slot, and the last one kept aside. `S` |
 | H-20 | State hotkeys (SELECT + R1 / L1, slot next and prev) | `controls.md` | — | — | Fixed buttons today; see H-46. `S` |

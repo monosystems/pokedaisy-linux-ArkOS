@@ -12,8 +12,9 @@ under `linux/`; the companion is the portable C core the 3DS port uses
 
 ## Install
 
-1. Install the port with PortMaster (Ports > PortMaster > PokeDaisy), or unzip
-   `PokeDaisy.zip` into `/roms/ports/`.
+1. Install the port with PortMaster: put `PokeDaisy.zip` into PortMaster's
+   autoinstall folder (`/roms/tools/PortMaster/autoinstall/` on ArkOS) and start
+   PortMaster, or unzip `PokeDaisy.zip` into `/roms/ports/`.
 2. Put your own legally dumped `.gba` games in `/roms/gba`.
 3. Start PokeDaisy from the Ports menu and pick a game.
 

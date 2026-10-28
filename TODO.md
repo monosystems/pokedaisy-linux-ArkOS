@@ -21,11 +21,16 @@ checked with `python3 porting_stats.py` when the item lands.
 Nothing that puts more pixels over the game starts before this is recorded, because
 the RK3326 shares its CPU with the emulator.
 
-- [ ] **P0.1** Run the R36S with `--stats --log /tmp/pd.log` and record frames per
-      second and the emulator/drawing split for `fit`, `integer` and `stretch`
-      (`linux/PLAN.md` phase 3). Gates P5.1, P5.2 and P5.6.
-- [ ] **P0.2** Save state and save backup on the exFAT card, then the PortMaster
-      install from the zip rather than a copied binary. Closes the rest of phase 3.
+- [ ] **P0.1** Run the R36S from the Ports menu (its launch script already passes
+      `--stats` and writes `log.txt` into the port folder) and record frames per
+      second and the emulator/drawing split for `fit`, `integer` and `stretch`,
+      with the companion closed and open (`linux/PLAN.md` phase 3 has the table;
+      the mode is `screen=` in `pokedaisy.ini` and the log names it). Gates P5.1,
+      P5.2 and P5.6.
+- [ ] **P0.2** Save state and save backup on the exFAT card (`.sav`/`.srm`,
+      `.backup-*.sav`, `pokedaisy-states/*.ss1` and `.resume`), then the PortMaster
+      install from the zip's `autoinstall` folder rather than a copied binary.
+      Closes the rest of phase 3.
 
 ## P1: free parity, no new addresses
 

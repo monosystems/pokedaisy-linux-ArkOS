@@ -506,6 +506,15 @@ static const char* scale_name(int scale) {
     return "fit";
 }
 
+// The device log has to say whether the overlay was up: a stats line alone
+// can't tell whether the frame's time went to the game or to the companion.
+static void log_overlay(const struct pd_companion* companion) {
+    if (!companion) {
+        return;
+    }
+    pd_logf("companion: %s", pd_companion_visible(companion) ? "shown" : "hidden");
+}
+
 // Tests drive the overlay without a pad or a screen: the presses of --test-nav
 // go in one per frame, in the order given, so each redraw's hits are used in
 // turn (see linux/test/smoke.sh).
@@ -635,6 +644,11 @@ int main(int argc, char** argv) {
     bool hasState = false;
     bool coreUp = false;
     int ffSpeed = opts.ffSpeed;
+    // The scale really on screen. The companion's screen mode wins over --scale
+    // once it has opened, and the handheld's launch script passes no --scale at
+    // all, so the ini's screen= decides there; a device report has to name that
+    // mode, not what the command line said.
+    int shownScale = opts.scale;
     int status = 1;
 
     if (opts.headless) {
@@ -814,7 +828,8 @@ int main(int argc, char** argv) {
         }
     }
     if (companion) {
-        pd_render_set_scale(render, scale_for_screen_mode(pd_companion_screen_mode(companion)));
+        shownScale = scale_for_screen_mode(pd_companion_screen_mode(companion));
+        pd_render_set_scale(render, shownScale);
     }
 
     // What a device report needs: the video and audio paths actually in use,
@@ -826,7 +841,8 @@ int main(int argc, char** argv) {
     const char* videoDriver = SDL_GetCurrentVideoDriver();
     pd_logf("system: SDL %d.%d.%d, video %s, renderer %s, display %s", sdlVersion.major, sdlVersion.minor,
             sdlVersion.patch, videoDriver ? videoDriver : "?", pd_render_name(render), display);
-    pd_logf("system: scale %s, rotation %d, audio %s at %d Hz", scale_name(opts.scale), opts.rotation,
+    pd_logf("system: scale %s (%s), rotation %d, audio %s at %d Hz", scale_name(shownScale),
+            companion ? "screen setting" : "command line", opts.rotation,
             audio ? pd_audio_driver(audio) : "none", pd_audio_rate(audio));
     pd_logf("system: %s (%zu bytes, own copy)", opts.rom, romFileSize);
     pd_logf("system: code base 0x%lx (a crash line's off is pc minus this), pid %ld", codeBase, (long) getpid());
@@ -870,10 +886,12 @@ int main(int argc, char** argv) {
     unsigned statsFrames = 0;
     uint64_t statsSince = SDL_GetPerformanceCounter();
     uint64_t emuTicks = 0;
+    uint64_t audioTicks = 0;
     uint64_t drawTicks = 0;
     struct test_nav tn = { opts.testNav, 0 };
     if (opts.startCompanion) {
         pd_companion_show(companion, true);
+        log_overlay(companion);
     }
 
     while (running && !pd_input_quit(input)) {
@@ -890,11 +908,13 @@ int main(int argc, char** argv) {
         // underneath and doesn't see the buttons while it is up.
         if (pd_input_pressed(input, PD_BTN_L2)) {
             pd_companion_toggle(companion);
+            log_overlay(companion);
         }
         bool overlay = pd_companion_visible(companion);
         if (overlay) {
             if (pd_input_pressed(input, PD_BTN_START)) {
                 pd_companion_show(companion, false);
+                log_overlay(companion);
             }
             if (pd_input_pressed(input, PD_BTN_UP)) {
                 pd_companion_nav(companion, PD_NAV_UP);
@@ -966,13 +986,21 @@ int main(int argc, char** argv) {
                 pd_logf("state: loaded %s", statePath);
             }
             break;
-        case PD_ACTION_SETTINGS_CHANGED:
+        case PD_ACTION_SETTINGS_CHANGED: {
             pd_companion_save_settings(companion);
-            pd_render_set_scale(render, scale_for_screen_mode(pd_companion_screen_mode(companion)));
+            int modeScale = scale_for_screen_mode(pd_companion_screen_mode(companion));
+            pd_render_set_scale(render, modeScale);
+            // A mode picked in SETTINGS lands in the log too: a run that was
+            // started on one SCREEN row and switched mid-game stays readable.
+            if (modeScale != shownScale) {
+                shownScale = modeScale;
+                pd_logf("screen: %s", scale_name(modeScale));
+            }
             if (!opts.ffSet) {
                 ffSpeed = pd_companion_ff_speed(companion);
             }
             break;
+        }
         case PD_ACTION_LEAVE_GAME:
             pd_logf("companion: leaving the game");
             running = false;
@@ -994,6 +1022,7 @@ int main(int argc, char** argv) {
         }
         uint64_t emuEnd = SDL_GetPerformanceCounter();
         pd_audio_pump(audio);
+        uint64_t audioEnd = SDL_GetPerformanceCounter();
 
         const uint32_t* ui = overlay ? pd_companion_draw(companion) : NULL;
         pd_render_frame(render, video, ui, PD_COMPANION_W, PD_COMPANION_H);
@@ -1009,18 +1038,22 @@ int main(int argc, char** argv) {
             // going into the emulator or into getting the picture out.
             statsFrames += (unsigned) n;
             emuTicks += emuEnd - emuStart;
-            drawTicks += drawEnd - emuEnd;
+            audioTicks += audioEnd - emuEnd;
+            drawTicks += drawEnd - audioEnd;
             uint64_t stamp = SDL_GetPerformanceCounter();
             if (stamp - statsSince >= counter) {
                 double ms = (double) (stamp - statsSince) * 1000.0 / (double) counter;
                 double perFrame = (double) statsFrames;
-                pd_logf("stats: %.1f fps, %.2f ms per frame (emu %.2f, draw %.2f), %d audio frames queued",
+                pd_logf("stats: %.1f fps, %.2f ms per frame (emu %.2f, audio %.2f, draw %.2f), %d audio frames "
+                        "queued",
                         perFrame * 1000.0 / ms, ms / perFrame,
                         (double) emuTicks * 1000.0 / (double) counter / perFrame,
+                        (double) audioTicks * 1000.0 / (double) counter / perFrame,
                         (double) drawTicks * 1000.0 / (double) counter / perFrame,
                         pd_audio_queued_frames(audio));
                 statsFrames = 0;
                 emuTicks = 0;
+                audioTicks = 0;
                 drawTicks = 0;
                 statsSince = stamp;
             }

@@ -130,13 +130,25 @@ screenshot can show any tab or dialog without a pad. `--pick NAME` and
 device.
 
 On a new device, `--stats` is the first thing to turn on: it logs frames per
-second, the frame time split into emulator and drawing, and how much audio is
-queued, once a second. The launch script already passes it.
+second, the frame time split into emulator, audio and drawing, and how much audio
+is queued, once a second. The launch script already passes it.
 
 ```sh
 ./linux/build/pokedaisy "/path/to/game.gba" --stats --log /tmp/pd.log
 grep -E 'system:|stats:' /tmp/pd.log
 ```
+
+Without ssh, the same measurement comes off the card. Start the port from the
+Ports menu, pick a game, play, leave with `START+SELECT`, then read
+`/roms/ports/pokedaisy/log.txt`: the launch script passes `--stats` and sends the
+log there, and it truncates that file at every start, so copy it off the card
+before starting the next session. The script passes no `--scale`, so the mode is
+the one in `pokedaisy.ini` (`screen=0` whole pixels, `1` fills the screen,
+`2` stretch), and a change of SCREEN made in the companion logs
+`screen: <mode>` as it happens. The companion itself logs `companion: shown` and
+`companion: hidden`, so a stats block can be read as "the game" or "the game with
+the overlay": one session can cover several modes, each with the companion up and
+put away.
 
 The startup `system:` lines say which video driver, renderer and display SDL
 picked, which audio driver opened at which rate, and the scale and rotation in
