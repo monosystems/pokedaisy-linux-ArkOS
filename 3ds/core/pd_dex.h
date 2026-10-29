@@ -57,5 +57,8 @@ bool pd_dex_sprite(const struct pd_game* g, int species, uint32_t* out);
 // "2'04\"" and "15.2 lbs." - the app's imperial conversions.
 void pd_dex_height(int dm, char* buf, int len);
 void pd_dex_weight(int hg, char* buf, int len);
+// The move a machine teaches (TM01 = item 289 .. HM08 = 346), 0 when the item
+// isn't one or the table's probe failed - gTMHMMoves, the bag's "TM06 TOXIC".
+int pd_dex_tm_move(const struct pd_game* g, int item);
 
 #endif

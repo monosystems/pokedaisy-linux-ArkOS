@@ -199,13 +199,13 @@ that frame.
 | ID | Feature | Upstream | Status | Notes / effort |
 | --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-B-01 | Pockets down the side, in the game's order, with the game's colours | `bag.md` | ◐ | The app draws the game's bag with `PC` and the order button under the pockets (V-13). The port steps to one pocket in a white list instead. |
+| C-B-01 | Pockets down the side, in the game's order, with the game's colours | `bag.md` | ✅ | `pd_ui_bag.c` draws the game's own pocket order down the left with `PC` and the order button under it, `ALL` first and `FAVORITES` when anything is starred, the open tab white with red text and the game's underline. Two edges narrower than the app: the rows carry no item icons and the bag's own ROM tiles aren't drawn (the app rebuilds them from `gBagTiles`), and `PC` says it isn't here yet (C-B-13, P4.2). |
 | C-B-02 | Item names and counts as the game prints them | `bag.md` | ✅ | Names are generated, the counts come from the save. |
 | C-B-03 | The tab's name follows the game (`PACK`, `CUBE`, `INVENTORY`, `POCKETS`) | `bag.md` | — | Only matters once hacks are read (S-06). |
-| C-B-04 | `ALL` pocket showing everything at once | `bag.md` | — | Always drawn, even with an empty bag; the other pockets only appear when they hold something (V-13). `S` |
-| C-B-05 | Sorting: game order, name, type, count | `bag.md` | — | All four confirmed: `DEFAULT`, `NAME`, `TYPE`, `COUNT` (V-13). `S` |
-| C-B-06 | Favorites (starred items, own `FAVORITES` pocket, per ROM) | `bag.md` | — | The star sits in the description bar and adds both the gold star in the list and a `FAVORITES` pocket (V-13). Needs a small per-ROM file next to the settings. `M` |
-| C-B-07 | TMs show the move they teach | `bag.md` | — | `S` |
+| C-B-04 | `ALL` pocket showing everything at once | `bag.md` | ✅ | The first tab and the default: every pocket's items in the game's own order, mixed (V-13). The other tabs only appear when their pocket holds something. |
+| C-B-05 | Sorting: game order, name, type, count | `bag.md` | ✅ | A button under the pockets that steps `DEFAULT` / `NAME` / `TYPE` / `COUNT` (`compare_rows` in `pd_ui_bag.c`); `DEFAULT` keeps the game's order with the starred items first, as the app's does. |
+| C-B-06 | Favorites (starred items, own `FAVORITES` pocket, per ROM) | `bag.md` | ✅ | The star in the description box toggles the item (`toggle_favorite`), stars it gold before its name in the list and gives the bag a `FAVORITES` tab that comes back only while something starred is held. Kept per ROM in the settings file (`fav1` to `fav4`, `<rom id>:<items>`); narrower than the app: a list holds up to 32 items and four ROMs each. |
+| C-B-07 | TMs show the move they teach | `bag.md` | ✅ | `pd_dex_tm_move` reads `gTMHMMoves` (FireRed and Emerald, both checked against the decomp ROMs) behind a probe - TM01 teaches FOCUS PUNCH and HM01 CUT, or nothing is read - and a row reads `TM05 ROAR`. |
 | C-B-08 | The tapped item's description | `bag.md` | ◐ | `pd_item_desc.c` is frozen on purpose (see `AGENTS.md`). Upstream reads `gItems` (`RomItemText.kt`), so a hack's or another language's text is wrong here. `M` |
 | C-B-09 | `ABLE` / `NOT ABLE` / `LEARNED` / `BEST` for a TM | `bag.md`, `ItemPartyPicker.kt` | — | The app replaces the description's text with six party icons and a tag under each (V-14). `BEST` and the forget line did not show with three able, so they are conditional on the advice; open. Shares the learnset reader with C-P-10. `M` |
 | C-B-10 | The sort order keeps a scroll a drag can move | `bag.md` | ✅ | A list a drag scrolls, per the README. |

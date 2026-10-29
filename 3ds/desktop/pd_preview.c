@@ -330,16 +330,35 @@ int main(int argc, char** argv) {
         }
     }
 
-    // BAG: a tapped item shows its description; a drag scrolls the list; the
-    // arrow opens the next pocket.
+    // BAG: ALL's list with the pocket tabs, the PC and the order button down
+    // the left (C-B-01); a tapped item shows its description; a drag scrolls
+    // the list; the order button steps through DEFAULT / NAME / TYPE / COUNT
+    // (C-B-05); a pocket tab opens that pocket; the star keeps the item in
+    // FAVORITES, which then gets a tab of its own (C-B-06); PC says it isn't
+    // here yet.
     tap(&p, HIT_TAB + PD_TAB_BAG, 0);
     shot(out, name, "bag", px);
     tap(&p, HIT_BAG_ROW + 2, 0);
     shot(out, name, "bag-item", px);
     drag(&p, HIT_BAG_LIST, -60);
     shot(out, name, "bag-scrolled", px);
-    tap(&p, HIT_POCKET_NEXT, 0);
+    tap(&p, HIT_BAG_ORDER, 0);
+    shot(out, name, "bag-order", px);
+    tap(&p, HIT_BAG_ORDER, 0);
+    tap(&p, HIT_BAG_ORDER, 0);
+    tap(&p, HIT_BAG_ORDER, 0);
+    tap(&p, HIT_BAG_TAB + 1, 0);
     shot(out, name, "bag-pocket", px);
+    tap(&p, HIT_BAG_TAB, 0);
+    tap(&p, HIT_BAG_ROW + 1, 0);
+    if (has_hit(&p, HIT_BAG_STAR)) {
+        tap(&p, HIT_BAG_STAR, 0);
+        shot(out, name, "bag-star", px);
+        tap(&p, HIT_BAG_STAR, 0);
+    }
+    tap(&p, HIT_BAG_PC, 0);
+    shot(out, name, "bag-pc", px);
+    tap(&p, HIT_BAG_TAB, 0);
 
     // SETTINGS, its pick-list and a confirm. FF lit, as while it runs.
     host.ffOn = true;

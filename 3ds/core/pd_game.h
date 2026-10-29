@@ -53,6 +53,12 @@ struct pd_config {
     uint32_t frontPics;        // {LZ77 pointer, size, tag} per species
     uint32_t palettes;         // {LZ77 pointer, tag} per species
     uint32_t regionalOrder;    // u16 national numbers; 0 = national 1..regionalCount
+    // gTMHMMoves: the move each machine teaches, u16 per item from TM01 on
+    // (Pokedex.kt's tmhmMoves). probeTmMove is TM01's move (FOCUS PUNCH) and
+    // probeHmMove HM01's (CUT): the table's own check, so a moved one reads
+    // nothing (AGENTS.md).
+    uint32_t tmhmMoves;
+    int probeTmMove, probeHmMove;
     int regionalCount;
     const char* regionName;
     // gEvolutionTable (the app's PokedexTables.evolutions): 5 rows of

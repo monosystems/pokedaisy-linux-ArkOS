@@ -174,6 +174,7 @@ void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     memset(ui, 0, sizeof(*ui));
     ui->tab = PD_TAB_PARTY;
     ui->summarySlot = -1;
+    ui->bagPocket = PD_BAG_ALL;
     ui->bagSelected = -1;
     ui->pressedId = -1;
     ui->dexNational = -1;
@@ -456,7 +457,7 @@ static void close_overlay(struct pd_ui* ui, enum pd_action action) {
 
 static void act(struct pd_ui* ui, int id) {
     if (ui_map_act(ui, id) || ui_dex_act(ui, id) || ui_guide_act(ui, id) || ui_battle_act(ui, id) ||
-        ui_card_act(ui, id) || ui_settings_act(ui, id)) {
+        ui_card_act(ui, id) || ui_bag_act(ui, id) || ui_settings_act(ui, id)) {
         return;
     }
     if (ui->overlay != PD_OVERLAY_NONE) {
@@ -492,13 +493,6 @@ static void act(struct pd_ui* ui, int id) {
         ui->summaryPage = id - HIT_SUMMARY_PAGE;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
-    } else if (id == HIT_POCKET_PREV || id == HIT_POCKET_NEXT) {
-        int dir = id == HIT_POCKET_NEXT ? 1 : -1;
-        ui->bagPocket = (ui->bagPocket + PD_POCKET_COUNT + dir) % PD_POCKET_COUNT;
-        ui->bagSelected = -1;
-        ui->bagScroll = 0;
-    } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
-        ui->bagSelected = id - HIT_BAG_ROW;
     } else if (id >= HIT_SETTING && id < HIT_SETTING + SETTING_COUNT) {
         // The two pages of their own, then the rows that open an overlay.
         static const enum pd_overlay OPENS[SETTING_COUNT] = {

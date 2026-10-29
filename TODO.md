@@ -79,15 +79,29 @@ carries no per-game risk. About 29 rows, roughly +13 points.
       it moves, `HIDDEN POWER` with its type chip and `PWR`. The preview shoots it as
       `-summary-stats`; the IVs and EVs were checked by recomputing KADABRA's,
       CHARIZARD's and MANECTRIC's stats from their base stats.*
-- [ ] **P1.7 Bag: `ALL`, order, TM names.** The `ALL` pocket, the order button
+- [x] **P1.7 Bag: `ALL`, order, TM names.** The `ALL` pocket, the order button
       (`DEFAULT`, `NAME`, `TYPE`, `COUNT`) and the move after a TM's number.
       (C-B-04, C-B-05, C-B-07)
-- [ ] **P1.8 Bag: favorites.** The star in the description bar, the gold star in the
+      *Done: `pd_ui_bag.c` builds the list from the tab and the order
+      (`build_rows`, `compare_rows`), `ALL` mixes every pocket in the game's
+      order, and `pd_dex_tm_move` (a probed `gTMHMMoves` read) puts the move
+      after a machine's number (`TM05 ROAR`). The preview shoots it as
+      `-bag-order` and `-bag-pocket`.*
+- [x] **P1.8 Bag: favorites.** The star in the description bar, the gold star in the
       list and the `FAVORITES` pocket that comes and goes with it, kept per ROM.
       (C-B-06)
-- [ ] **P1.9 Bag: the game's own look.** Yellow pockets with `PC` and the order
+      *Done: the description box's star toggles the item, the list marks it gold
+      and a `FAVORITES` tab comes and goes with it; the sets live in the settings
+      file as one `fav1`..`fav4` line per ROM (`<rom id>:<items>`), 32 items each.
+      The preview shoots it as `-bag-star`.*
+- [x] **P1.9 Bag: the game's own look.** Yellow pockets with `PC` and the order
       button under them, instead of one pocket in a white list. (C-B-01) — the visual
       half of the tab, worth doing before more bag features land on it.
+      *Done: the pockets run down the left in the game's own order with the open
+      one white/red and the game's underline, `PC` and the order button pinned
+      under them, the list beside and the description box under it; Emerald keeps
+      its navy/gold colours and striped backdrop. Narrower than the app: no item
+      icons and no ROM bag tiles, and `PC` says it isn't here yet.*
 - [x] **P1.10 Dex: filters and arrows.** The filter list with a count per filter and
       the previous and next arrows with the counter. (C-D-03, C-D-11)
       *Done: a chip row under the POKéDEX title (`filter_row` in `pd_ui_dex.c`)

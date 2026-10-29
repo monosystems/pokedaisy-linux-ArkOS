@@ -69,6 +69,16 @@ enum pd_tweak {
      PD_TAB_BIT(PD_TAB_BAG) | PD_TAB_BIT(PD_TAB_GUIDE))
 #define PD_TWEAKS_DEFAULT ((1u << PD_TWEAK_COUNT) - 1)
 
+// C-B-06: the bag's starred items, one list per ROM (the app keeps them per
+// game). A ROM's list is empty the first time it is opened.
+#define PD_FAV_ROMS 4
+#define PD_FAV_MAX 32
+struct pd_favs {
+    unsigned rom; // pd_rom_id, 0 = the slot is free
+    unsigned short items[PD_FAV_MAX];
+    int count;
+};
+
 // What the player set; the host loads and saves it (pd_settings.h).
 struct pd_settings {
     int screenMode; // enum pd_screen_mode
@@ -76,6 +86,7 @@ struct pd_settings {
     int guideNotice; // a bit per game kind whose GUIDE notice was accepted
     unsigned tabsShown; // a bit per enum pd_tab: the player's pick of the bar
     unsigned tweaks;    // a bit per enum pd_tweak: on
+    struct pd_favs favs[PD_FAV_ROMS];
 };
 
 // Whether the player left [t] on (SETTINGS > TWEAKS).
@@ -104,6 +115,21 @@ enum pd_summary_page {
     PD_SUMMARY_STATS,
     PD_SUMMARY_MATCHUPS,
     PD_SUMMARY_PAGES,
+};
+
+// The bag's own tabs beyond the game's pockets (C-B-04, C-B-06): ALL mixes
+// every pocket in the game's order, FAVORITES holds the starred items.
+#define PD_BAG_ALL (-1)
+#define PD_BAG_FAVORITES (-2)
+
+// The bag's order button (C-B-05): the game's own order with the starred items
+// first, by name, by pocket, or by how many are held.
+enum bag_order {
+    PD_BAG_DEFAULT,
+    PD_BAG_NAME,
+    PD_BAG_TYPE,
+    PD_BAG_COUNT,
+    PD_BAG_ORDERS,
 };
 
 enum pd_action {
@@ -187,10 +213,12 @@ struct pd_ui {
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
     int summaryPage; // enum pd_summary_page: the summary's page
-    int bagPocket;   // index into the game's own pocket order
-    int bagSelected; // item index in that pocket, -1 = none
-    int bagScroll;   // pixels
-
+    // BAG: the tab shown (PD_BAG_ALL, PD_BAG_FAVORITES or a PD_POCKET_*), the
+    // row chosen in the list it builds, that list's scroll, the order button's
+    // pick (enum bag_order), and the PC button's "not yet" line in the
+    // description box.
+    int bagPocket, bagSelected, bagScroll, bagOrder;
+    bool bagPcNotice;
     // POKéDEX: the list's scroll, the open entry (national number, 0 = the
     // list), which dex shows (-1 = the save's own: National once it has
     // it, else the regional one) and the filter (enum dex_filter). An entry's

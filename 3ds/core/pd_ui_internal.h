@@ -22,7 +22,11 @@ enum {
     HIT_POCKET_PREV = 400,
     HIT_POCKET_NEXT = 401,
     HIT_BAG_LIST = 410,
-    HIT_BAG_ROW = 500,     // + item index
+    HIT_BAG_ROW = 2500,    // + row in the list the tabs and the order build (up to 320)
+    HIT_BAG_TAB = 1800,    // + bag tab: the pocket / ALL / FAVORITES tabs
+    HIT_BAG_ORDER = 1810,  // the order button (DEFAULT / NAME / TYPE / COUNT)
+    HIT_BAG_PC = 1811,     // the PC button under the tabs
+    HIT_BAG_STAR = 1812,   // the description box's star (C-B-06)
     HIT_SETTING = 600,     // + enum setting_row
     HIT_SETTINGS_TAB = 610, // + enum pd_tab: a TAB BAR page row
     HIT_TWEAK = 630,       // + enum pd_tweak: a TWEAKS page row
@@ -136,6 +140,9 @@ bool ui_dex_act(struct pd_ui* ui, int id);
 bool ui_guide_act(struct pd_ui* ui, int id);
 bool ui_battle_act(struct pd_ui* ui, int id);
 bool ui_card_act(struct pd_ui* ui, int id);
+// The BAG's own tags need the game and the snapshot (its tabs, the order
+// button, the PC button, the rows and the description's star).
+bool ui_bag_act(struct pd_ui* ui, int id);
 void ui_card_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);
 bool ui_card_tick(struct pd_ui* ui, unsigned ms);
 

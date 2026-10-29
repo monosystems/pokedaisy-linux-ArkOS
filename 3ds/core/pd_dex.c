@@ -340,3 +340,16 @@ void pd_dex_weight(int hg, char* buf, int len) {
     if (lbs % 10 >= 5) lbs += 10;
     snprintf(buf, (size_t) len, "%ld.%ld lbs.", lbs / 100, (lbs % 100) / 10);
 }
+
+// gTMHMMoves: 58 u16s, TM01..TM50 then HM01..HM08. TM01's FOCUS PUNCH and
+// HM01's CUT are the probe, so a table that moved reads nothing (AGENTS.md).
+#define TM01_ITEM 289
+#define MACHINES 58
+int pd_dex_tm_move(const struct pd_game* g, int item) {
+    const struct pd_config* cfg = g->cfg;
+    if (!cfg || !cfg->tmhmMoves || !cfg->probeTmMove || item < TM01_ITEM || item >= TM01_ITEM + MACHINES) return 0;
+    const uint8_t* t = pd_rom_at(g, cfg->tmhmMoves, MACHINES * 2);
+    if (!t) return 0;
+    if (u16(t) != cfg->probeTmMove || u16(t + 50 * 2) != cfg->probeHmMove) return 0;
+    return u16(t + (item - TM01_ITEM) * 2);
+}
