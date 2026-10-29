@@ -91,7 +91,7 @@ void ui_card_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
 
 bool ui_card_act(struct pd_ui* ui, int id) {
     if (id == HIT_OPEN_CARD) {
-        ui->tab = PD_TAB_CARD;
+        ui_open_tab(ui, PD_TAB_CARD);
         ui->cardBack = false;
         ui->cardFlipMs = 0;
         // The colon starts shown, a second each way from here.

@@ -2,7 +2,7 @@
 #
 #   cmake -S linux -B linux/build -DCMAKE_BUILD_TYPE=Release && cmake --build linux/build
 #
-# Same shape as 3ds/ctr/CMakeLists.txt: libmgba (the submodule) built as a bare
+# Same shape as linux/arkos/build.sh: libmgba (the submodule) built as a bare
 # core, no frontends, no dependencies, plus our SDL2 host and the portable
 # companion core from 3ds/core.
 cmake_minimum_required(VERSION 3.13)
@@ -95,6 +95,7 @@ set(CORE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../3ds/core/pd_ui_dex.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../3ds/core/pd_ui_guide.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../3ds/core/pd_ui_map.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../3ds/core/pd_ui_more.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../3ds/core/pd_ui_party.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../3ds/core/pd_ui_settings.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../3ds/core/pd_ui_widgets.c")

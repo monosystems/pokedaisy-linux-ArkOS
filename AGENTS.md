@@ -1,21 +1,23 @@
 # AGENTS.md
 
-Short, shared rules for the ports in this repo (the Linux handheld port and the
-3DS port). The long versions are `CLAUDE.md` (upstream project notes and
-conventions), `docs/DEVELOPMENT.md` (how the app reads each game) and
-`linux/PLAN.md` (the Linux port's phases). This file is what an agent must not
-get wrong.
+Short, shared rules for the port in this repo. The long versions are `CLAUDE.md`
+(upstream project notes and conventions), `docs/DEVELOPMENT.md` (how the app
+reads each game) and `linux/PLAN.md` (the port's phases). This file is what an
+agent must not get wrong.
 
 ## What belongs to whom
 
 - `app/`, `scripts/`, `docs/`, `website/`, `ui-preview/` and `native-capture/`
-  are upstream. Do not edit them: the ports are a fork of a project that keeps
+  are upstream. Do not edit them: the port is a fork of a project that keeps
   moving, and an untouched app tree is what keeps an upstream merge clean.
-- The ports live in `3ds/core` (portable C, no platform headers), `3ds/ctr`
-  (devkitARM host), `3ds/desktop` (preview tool), `linux/` (SDL2 host) and
-  `linux/arkos/` (PortMaster package, `deploy.sh`).
-- `3ds/core` is shared by both hosts and must build as plain C11, without SDL,
-  mGBA or 3DS includes.
+- The port's own code lives in `3ds/core` (portable C, no platform headers),
+  `3ds/desktop` (the preview tool), `3ds/tools` (the generators), `linux/` (the
+  SDL2 host) and `linux/arkos/` (the PortMaster package, `deploy.sh`).
+- `3ds/` comes from upstream: the portable core (`3ds/core`, which the Linux
+  host compiles), the preview tool and the generators are ours to change, and
+  `3ds/ctr` (upstream's 3DS host) stays as upstream wrote it. This fork targets
+  ArkOS only: no plan, README or TODO here names another device as a target.
+- `3ds/core` must build as plain C11, without SDL or mGBA includes.
 
 ## Build and verify before committing port changes
 
@@ -23,11 +25,10 @@ get wrong.
 python3 3ds/tools/gen_tables.py       # names, moves, types, item names, gender
 python3 3ds/tools/gen_map_tables.py   # map sections, art fingerprints, cursors
 python3 3ds/tools/gen_guide.py        # guides, bosses, area data
-# `make -C 3ds tables` runs those three and the font and icon (needs Pillow)
+# `make -C 3ds tables` runs those three and the font (needs Pillow)
 make -C 3ds preview           # every tab, from the RAM fixtures -> build/shots/*.png
-./linux/test/smoke.sh         # the Linux host, headless, no game needed
 cmake -S linux -B linux/build -DCMAKE_BUILD_TYPE=Release && cmake --build linux/build
-make -C 3ds 3ds               # the real .3dsx (devkitARM in Docker)
+./linux/test/smoke.sh         # the Linux host, headless, no game needed
 ```
 
 For a UI or data change, look at the matching preview shot, not only at exit 0.
@@ -47,8 +48,8 @@ For a UI or data change, look at the matching preview shot, not only at exit 0.
 - Saves are sacred: a savestate never carries the battery save
   (`SAVESTATE_RTC`), the save is backed up before every load, and a savestate
   must never be written into a save file.
-- Never hand mGBA's ROM block to `3ds/core`: mGBA remaps it after reset, so both
-  hosts keep their own copy of the ROM and point `pd_game.rom` at it.
+- Never hand mGBA's ROM block to `3ds/core`: mGBA remaps it after reset, so the
+  host keeps its own copy of the ROM and points `pd_game.rom` at it.
 - Nothing in the repo that is not ours to publish: no ROMs, saves, keys or
   personal paths. `linux/arkos/deploy.conf` is ignored for that reason.
 
@@ -64,11 +65,11 @@ plain `cp` when deploy.sh is there.
 
 - Code comments explain why, in English, in the voice of the file around them.
 - Docs are `PORTING.md` (the feature inventory against the app), `TODO.md` (the
-  order the work goes in), `linux/PLAN.md`, `linux/README.md` and `3ds/README.md`;
+  order the work goes in), `linux/PLAN.md` and `linux/README.md`;
   update them in the same change as the behaviour they describe, including the phase
   table and a feature's row in `PORTING.md`. A TODO item that lands gets ticked, and
   its rows move with it.
-- `README.md` opens with this fork's own section: what the ports are and how much
+- `README.md` opens with this fork's own section: what the port is and how much
   of the app is ported. The upstream text below the divider stays unchanged, so an
   upstream README change still merges cleanly. The percentage is counted from
   `PORTING.md` (a partial feature counts half, not-applicable rows are left out) by

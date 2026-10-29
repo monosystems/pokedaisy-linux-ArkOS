@@ -24,13 +24,17 @@ python3 "$here/make_smoke_rom.py" "$work/smoke.gba"
 "$build/pokedaisy" "$work/smoke.gba" --headless --frames 10 --companion --no-resume \
     --screenshot "$work/party.png" --log "$work/party.log"
 
-"$build/pokedaisy" "$work/smoke.gba" --headless --frames 12 --companion --test-nav tabnext --no-resume \
-    --screenshot "$work/bag.png" --log "$work/bag.log"
+# The bar is the tabs this ROM has, in the app's order (C-04): PARTY, MAP,
+# BAG, GUIDE - the test ROM has FireRed's game code but no tables, so no DEX
+# chip. Two steps reach BAG, three reach GUIDE; the delay is one frame,
+# because a step needs the bar the first draw built.
+"$build/pokedaisy" "$work/smoke.gba" --headless --frames 12 --companion --test-nav tabnext,tabnext \
+    --test-nav-delay 1 --no-resume --screenshot "$work/bag.png" --log "$work/bag.log"
 
 # The GUIDE tab reads the game's tables through our own copy of the ROM, and it
 # must draw even with nothing to list: a stale ROM pointer crashed exactly here.
 "$build/pokedaisy" "$work/smoke.gba" --headless --frames 14 --companion --test-nav tabnext,tabnext,tabnext \
-    --no-resume --screenshot "$work/guide.png" --log "$work/guide.log"
+    --test-nav-delay 1 --no-resume --screenshot "$work/guide.png" --log "$work/guide.log"
 
 # 3. The launcher: the port starts without a game, so the list and its empty
 # state are screens too (picked here without a pad, to keep the run headless).

@@ -449,7 +449,7 @@ bool ui_guide_act(struct pd_ui* ui, int id) {
             ui->action = PD_ACTION_SETTINGS_CHANGED;
         } else if (id == HIT_NOTICE_BACK) {
             ui->overlay = PD_OVERLAY_NONE;
-            ui->tab = PD_TAB_PARTY;
+            ui_open_tab(ui, PD_TAB_PARTY);
         }
         // Taps beside the window don't dismiss it: it wants an answer.
         return true;

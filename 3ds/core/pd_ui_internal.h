@@ -16,6 +16,7 @@
 enum {
     HIT_TAB = 100,         // + tab
     HIT_FF = 110,
+    HIT_MORE = 111,
     HIT_SLOT = 200,        // + party slot
     HIT_BACK = 300,
     HIT_POCKET_PREV = 400,
@@ -23,6 +24,10 @@ enum {
     HIT_BAG_LIST = 410,
     HIT_BAG_ROW = 500,     // + item index
     HIT_SETTING = 600,     // + enum setting_row
+    HIT_SETTINGS_TAB = 610, // + enum pd_tab: a TAB BAR page row
+    HIT_TWEAK = 630,       // + enum pd_tweak: a TWEAKS page row
+    HIT_SETTINGS_BACK = 640,
+    HIT_MORE_TAB_BAR = 641, // MORE's button under the grid: SETTINGS > TAB BAR
     HIT_OPTION = 700,      // + pick-list option
     HIT_YES = 800,
     HIT_NO = 801,
@@ -56,10 +61,31 @@ enum {
 enum setting_row {
     SETTING_SCREEN,
     SETTING_FF,
+    SETTING_TAB_BAR, // opens TAB BAR, the pick of the bar's chips (C-03)
+    SETTING_TWEAKS,  // opens TWEAKS, the companion's small switches (C-07)
     SETTING_SAVE_STATE,
     SETTING_LOAD_STATE,
     SETTING_LEAVE,
+    SETTING_COUNT,
 };
+
+// The companion's tabs in the app's order (COMPANION_TABS: PARTY, DEX, MAP,
+// ITEMS, GUIDE, CARD): the bar fills in this order, and SETTINGS > TAB BAR
+// offers every entry. The port has no STATES or CHEEVOS tab yet.
+extern const enum pd_tab PD_TAB_ORDER[];
+#define PD_TAB_ORDER_COUNT 6
+
+// C-04: whether this game has the data a tab needs (the POKéDEX its tables,
+// the GUIDE its pages, the TRAINER CARD its art).
+bool pd_tab_available(const struct pd_game* g, enum pd_tab t);
+
+// Switches the companion to [tab], with the slide TWEAKS > TAB ANIMATIONS asks
+// for, and closes an open summary (what every tab change does).
+void ui_open_tab(struct pd_ui* ui, enum pd_tab tab);
+
+// SETTINGS' own pages (the TAB BAR pick and the TWEAKS switches): a tap on
+// one of their rows; true if it was theirs.
+bool ui_settings_act(struct pd_ui* ui, int id);
 
 void ui_add_hit(struct pd_ui* ui, int x, int y, int w, int h, int id);
 void ui_add_scroll_hit(struct pd_ui* ui, int x, int y, int w, int h, int id);
@@ -76,6 +102,10 @@ void ui_row(struct pd_canvas* c, int x, int y, int w, const char* label, const c
 void ui_format_money(long v, char* buf, size_t len);
 
 void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);
+// The chip's word for a tab ("" for the gear, which draws the gear instead).
+const char* pd_tab_label(enum pd_tab tab);
+// MORE: the game's tabs the bar had no room for (their chips open them).
+void ui_more_tab(struct pd_ui* ui, struct pd_canvas* c);
 void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);
 void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s);
 void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,

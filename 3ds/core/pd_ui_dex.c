@@ -280,7 +280,7 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
 
 void ui_dex_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     if (!pd_dex_available(g)) {
-        ui_notice(c, "NO POKéDEX YET", "This version's POKéDEX tables", "aren't in the 3DS companion yet.");
+        ui_notice(c, "NO POKéDEX YET", "This version's POKéDEX tables", "aren't in the companion yet.");
         return;
     }
     if (!s->dexOk) {

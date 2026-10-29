@@ -122,7 +122,7 @@ bool pd_pick_rom(const char* dir, const char* pick, const char* shot, char* out,
 
         if (dirty) {
             if (n == 0) {
-                // pd_menu's own empty state names the 3DS's folder; say ours.
+                // pd_menu's own empty state names another folder; say ours.
                 pd_splash_draw(&canvas, "NO GAMES FOUND", "Put .gba files in:", dir);
             } else {
                 pd_menu_draw(&menu, &canvas);

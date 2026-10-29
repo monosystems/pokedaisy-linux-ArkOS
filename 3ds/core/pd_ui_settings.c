@@ -1,7 +1,9 @@
-// SETTINGS: what the companion knows about the game, then the options - and
-// the black-out overlays they open: a pick-list for a multi-choice setting
-// (the app's OptionSelector: never a row cycling through more than two
-// values) and a YES / NO confirm (OptionConfirm).
+// SETTINGS: what the companion knows about the game, then the options - the
+// two pages of their own the app opens from here (TAB BAR, C-03, and TWEAKS,
+// C-07) - and the black-out overlays they open: a pick-list for a multi-choice
+// setting (the app's OptionSelector: never a row cycling through more than two
+// values), a YES / NO confirm (OptionConfirm) and the TAB BAR's one-button
+// notice.
 #include <stdio.h>
 #include <string.h>
 
@@ -23,16 +25,150 @@ static void setting(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w,
     *y += ROW_H;
 }
 
+// A row that opens a page of its own: the app's arrow at its right end.
+static void page_row(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w, enum setting_row row,
+                     const char* label, const char* value) {
+    setting(ui, c, x, y, w, row, label, value);
+    pd_triangle(c, x + w - 6, *y - ROW_H + 6, 5, PD_RIGHT, PD_MUTED);
+}
+
+// A LABEL VALUE pair inside one column of the game's own facts.
+static void info_value(struct pd_canvas* c, int x, int y, int w, const char* label, const char* value) {
+    int ty = pd_text_y(y, ROW_H);
+    pd_text(c, x, ty, label, PD_LABEL, PD_LABEL_SHADOW);
+    int vx = x + w * 35 / 100;
+    pd_text_fit(c, vx, ty, x + w - vx, value, PD_VALUE, PD_VALUE_SHADOW);
+}
+
+// Two facts to a row. The app's SETTINGS list scrolls; this screen is 320x240
+// and holds options from the day the TAB BAR and TWEAKS rows arrived, so the
+// four single rows the game's facts used to take became two.
+static void info_pair(struct pd_canvas* c, int x, int y, int w, const char* l1, const char* v1, const char* l2,
+                      const char* v2) {
+    int col = (w - 8) / 2;
+    info_value(c, x, y, col, l1, v1);
+    if (l2) info_value(c, x + col + 8, y, col, l2, v2);
+}
+
+// --- SETTINGS' own pages ---
+
+// A page's title window: its name, a count or note at its right, and BACK to
+// the option list (the app's OptionTitleWindow with its arrow).
+static void page_title(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* trailing) {
+    int x = MARGIN, w = c->w - 2 * MARGIN;
+    int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
+    int ty = pd_text_y(CONTENT_Y, TITLE_H);
+    int lw = pd_text(c, x + f + 6, ty, title, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    if (trailing && *trailing) pd_text(c, x + f + 6 + lw + 10, ty, trailing, PD_MUTED, PD_MUTED_SHADOW);
+    const char* label = "BACK";
+    int bw = pd_text_width(label) + 12, bh = TITLE_H - 6;
+    int bx = x + w - f - 2 - bw, by = CONTENT_Y + 3;
+    pd_title_box(c, bx, by, bw, bh, ui->pressedId == HIT_SETTINGS_BACK ? PD_TITLE_FILL : PD_LIST_FILL);
+    pd_text(c, bx + 6, pd_text_y(by, bh), label, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    ui_add_hit(ui, bx, by, bw, bh, HIT_SETTINGS_BACK);
+}
+
+// TAB BAR (C-03): every tab the player can put on the bar, SHOWN or HIDDEN.
+// A tab this game doesn't have says N/A and keeps its setting for the games
+// that do (the app's rule).
+static void tabs_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g) {
+    char count[16];
+    snprintf(count, sizeof(count), "%d/%d", ui->tabsPicked, PD_BAR_TABS);
+    page_title(ui, c, "TAB BAR", count);
+    int x = MARGIN, w = c->w - 2 * MARGIN, y = LIST_Y;
+    int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
+    int ix = x + lf + 4, iw = w - 2 * (lf + 4);
+    y += lf;
+    for (int i = 0; i < PD_TAB_ORDER_COUNT; i++) {
+        enum pd_tab t = PD_TAB_ORDER[i];
+        bool there = pd_tab_available(g, t);
+        const char* value = !there ? "N/A" : pd_tab_shown(ui->settings, t) ? "SHOWN" : "HIDDEN";
+        ui_row(c, ix, y, iw, pd_tab_label(t), value, ui->pressedId == HIT_SETTINGS_TAB + (int) t);
+        if (there) ui_add_hit(ui, ix - 4, y, iw + 8, ROW_H, HIT_SETTINGS_TAB + (int) t);
+        y += ROW_H;
+    }
+    pd_text_wrap(c, ix, y + 6, iw, 14, 2, "Hidden tabs open from MORE, left of the gear.", PD_MUTED,
+                 PD_MUTED_SHADOW);
+}
+
+// TWEAKS (C-07): the app's CompanionTweaks, each on by default, with the grey
+// line under it that says what it does.
+static const char* const TWEAK_LABELS[PD_TWEAK_COUNT] = {
+    [PD_TWEAK_PARTY_ICONS] = "PARTY ICONS MOVE",
+    [PD_TWEAK_MAP_CURSOR] = "MAP CURSOR BLINK",
+    [PD_TWEAK_TAB_ANIM] = "TAB ANIMATIONS",
+    [PD_TWEAK_JUMP_BATTLE] = "JUMP TO BATTLE",
+};
+static const char* const TWEAK_DESCS[PD_TWEAK_COUNT] = {
+    [PD_TWEAK_PARTY_ICONS] = "Hold a party slot and its icon bounces",
+    [PD_TWEAK_MAP_CURSOR] = "The MAP cursor pulses between two sizes",
+    [PD_TWEAK_TAB_ANIM] = "Tabs slide in. Off: they switch at once",
+    [PD_TWEAK_JUMP_BATTLE] = "A battle opens BATTLE, then goes back",
+};
+
+static void tweaks_page(struct pd_ui* ui, struct pd_canvas* c) {
+    page_title(ui, c, "TWEAKS", NULL);
+    int x = MARGIN, w = c->w - 2 * MARGIN, y = LIST_Y;
+    int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
+    int ix = x + lf + 4, iw = w - 2 * (lf + 4);
+    y += lf;
+    for (int i = 0; i < PD_TWEAK_COUNT; i++) {
+        bool on = pd_tweak_on(ui->settings, (enum pd_tweak) i);
+        ui_row(c, ix, y, iw, TWEAK_LABELS[i], on ? "ON" : "OFF", ui->pressedId == HIT_TWEAK + i);
+        ui_add_hit(ui, ix - 4, y, iw + 8, ROW_H + 14, HIT_TWEAK + i);
+        pd_text_fit(c, ix, y + ROW_H - 2, iw, TWEAK_DESCS[i], PD_MUTED, PD_MUTED_SHADOW);
+        y += ROW_H + 14;
+    }
+}
+
+// A tap on one of the two pages: a tab flipped, or a switch. Whether another
+// chip still fits is the count the last draw worked out (ui->tabsPicked), the
+// app's barCount over the tabs this game has.
+bool ui_settings_act(struct pd_ui* ui, int id) {
+    if (id == HIT_SETTINGS_BACK) {
+        ui->settingsPage = PD_SETTINGS_HOME;
+        return true;
+    }
+    if (id >= HIT_SETTINGS_TAB && id < HIT_SETTINGS_TAB + PD_TAB_COUNT) {
+        enum pd_tab t = (enum pd_tab) (id - HIT_SETTINGS_TAB);
+        if (pd_tab_shown(ui->settings, t)) {
+            ui->settings->tabsShown &= ~PD_TAB_BIT(t);
+            ui->action = PD_ACTION_SETTINGS_CHANGED;
+        } else if (ui->tabsPicked >= PD_BAR_TABS) {
+            ui->overlay = PD_OVERLAY_TABS_FULL;
+        } else {
+            ui->settings->tabsShown |= PD_TAB_BIT(t);
+            ui->action = PD_ACTION_SETTINGS_CHANGED;
+        }
+        return true;
+    }
+    if (id >= HIT_TWEAK && id < HIT_TWEAK + PD_TWEAK_COUNT) {
+        ui->settings->tweaks ^= PD_TWEAK_BIT(id - HIT_TWEAK);
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
+        return true;
+    }
+    return false;
+}
+
 void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                      const struct pd_host_info* host) {
+    if (ui->settingsPage == PD_SETTINGS_TABS) {
+        tabs_page(ui, c, g);
+        return;
+    }
+    if (ui->settingsPage == PD_SETTINGS_TWEAKS) {
+        tweaks_page(ui, c);
+        return;
+    }
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
     pd_text(c, x + f + 6, ty, "SETTINGS", PD_TITLE_TEXT, PD_TITLE_SHADOW);
     int right = x + w - f - 6;
-    // The TRAINER CARD opens from here (the list below is full): a grey chip at
-    // the title window's right, white while pressed, like the tab bar's.
-    if (g->cfg && g->cfg->cardStyle && g->rom) {
+    // The TRAINER CARD opens from here, and from its own chip once the player
+    // puts it on the bar: a grey chip at the title window's right, white while
+    // pressed, like the tab bar's.
+    if (pd_tab_available(g, PD_TAB_CARD)) {
         const char* label = "TRAINER CARD";
         int bw = pd_text_width(label) + 12, bh = TITLE_H - 6;
         int bx = x + w - f - 2 - bw, by = CONTENT_Y + 3;
@@ -54,14 +190,15 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     char buf[40];
     if (s->valid) {
         const char* place = pd_mapsec_name(g, s->mapsec);
-        ui_row(c, ix, y, iw, "PLACE", *place ? place : "-", false);
-        y += ROW_H;
-        ui_format_money(s->money, buf, sizeof(buf));
-        ui_row(c, ix, y, iw, "MONEY", buf, false);
+        char money[40];
+        ui_format_money(s->money, money, sizeof(money));
+        info_pair(c, ix, y, iw, "PLACE", *place ? place : "-", "MONEY", money);
         y += ROW_H;
     }
-    for (int i = 0; host && i < host->count && i < PD_UI_HOST_LINES; i++) {
-        ui_row(c, ix, y, iw, host->labels[i], host->values[i], false);
+    for (int i = 0; host && i < host->count && i < PD_UI_HOST_LINES; i += 2) {
+        bool two = i + 1 < host->count && i + 1 < PD_UI_HOST_LINES;
+        info_pair(c, ix, y, iw, host->labels[i], host->values[i], two ? host->labels[i + 1] : NULL,
+                  two ? host->values[i + 1] : NULL);
         y += ROW_H;
     }
     pd_fill(c, ix, y + 1, iw, 1, PD_DIVIDER);
@@ -70,6 +207,10 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     setting(ui, c, ix, &y, iw, SETTING_SCREEN, "SCREEN", pd_screen_mode_name(ui->settings->screenMode));
     snprintf(buf, sizeof(buf), "%dx", ui->settings->ffSpeed);
     setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
+    // The app's COMPANION group: the bar's own pick, then its small switches.
+    snprintf(buf, sizeof(buf), "%d/%d", ui->tabsPicked, PD_BAR_TABS);
+    page_row(ui, c, ix, &y, iw, SETTING_TAB_BAR, "TAB BAR", buf);
+    page_row(ui, c, ix, &y, iw, SETTING_TWEAKS, "TWEAKS", NULL);
     setting(ui, c, ix, &y, iw, SETTING_SAVE_STATE, "SAVE STATE", NULL);
     if (host && host->hasState) {
         setting(ui, c, ix, &y, iw, SETTING_LOAD_STATE, "LOAD STATE", host->stateWhen);
@@ -124,6 +265,21 @@ static void confirm(struct pd_ui* ui, struct pd_canvas* c, const char* title, co
     ui_button(ui, c, c->w / 2 + 6, y, bw, 24, "CANCEL", HIT_NO);
 }
 
+// A black-out window that only says something: the app's OK-only dialog
+// (TAB BAR IS FULL).
+static void notice(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* text) {
+    int x = MARGIN, w = c->w - 2 * MARGIN;
+    int y = CONTENT_Y + 8;
+    title_window(c, y, title);
+    y += TITLE_H + 4;
+    int h = 3 * 16 + 2 * 7 + 6;
+    int lf = pd_list_box(c, x, y, w, h);
+    pd_text_wrap(c, x + lf + 6, y + lf + 2, w - 2 * (lf + 6), 16, 3, text, PD_LABEL, PD_LABEL_SHADOW);
+    y += h + 6;
+    int bw = 96;
+    ui_button(ui, c, c->w / 2 - bw / 2, y, bw, 24, "OK", HIT_YES);
+}
+
 void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     if (ui->overlay == PD_OVERLAY_NONE) return;
     pd_dim(c, 0xE6);
@@ -137,6 +293,13 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     case PD_OVERLAY_PICK_FF:
         pick_list(ui, c, "FAST-FORWARD", FF, PD_FF_MAX - PD_FF_MIN + 1, ui->settings->ffSpeed - PD_FF_MIN);
         break;
+    case PD_OVERLAY_TABS_FULL: {
+        char text[96];
+        snprintf(text, sizeof(text), "Up to %d tabs fit next to the gear. Hide one first; hidden tabs open from MORE.",
+                 PD_BAR_TABS);
+        notice(ui, c, "TAB BAR IS FULL", text);
+        break;
+    }
     case PD_OVERLAY_CONFIRM_SAVE:
         confirm(ui, c, "SAVE STATE",
                 "Save a state of the game as it is now? It replaces the last one. The save file isn't touched.",

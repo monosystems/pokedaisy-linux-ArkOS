@@ -14,7 +14,7 @@
 #include "pd_romart.h"
 #include "pd_settings.h"
 
-// How often the game is read, in emulated frames (the 3DS host's interval).
+// How often the game is read, in emulated frames.
 #define PD_SAMPLE_EVERY 10
 // One press on a list's edge scrolls this far, in canvas pixels.
 #define PD_SCROLL_STEP 64
@@ -74,7 +74,7 @@ struct pd_companion* pd_companion_open(const char* romPath, const char* settings
     c->game.romSize = romSize;
     if (c->game.cfg) {
         // The game's own art (region map, trainer card), once, while the game
-        // loads - the 3DS host does the same.
+        // loads.
         uint32_t started = SDL_GetTicks();
         pd_romart_scan(&c->game);
         pd_map_art(&c->game);

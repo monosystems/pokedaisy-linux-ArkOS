@@ -4,7 +4,7 @@
 
 #include "log.h"
 
-// The GBA's key bits, as in mgba/internal/gba/input.h and 3ds/ctr/main.c.
+// The GBA's key bits, as in mgba/internal/gba/input.h.
 enum {
     GBA_A = 1 << 0,
     GBA_B = 1 << 1,
@@ -156,7 +156,7 @@ static uint32_t read_buttons(const struct pd_input* in) {
         m |= 1u << PD_BTN_R2;
     }
 
-    // The left stick moves as the D-pad, the way the 3DS host treats its circle pad.
+    // The left stick moves as the D-pad, the way a pad's stick is meant to.
     Sint16 x = pad_axis(in, SDL_CONTROLLER_AXIS_LEFTX);
     Sint16 y = pad_axis(in, SDL_CONTROLLER_AXIS_LEFTY);
     if (x > PD_STICK_DEADZONE) {

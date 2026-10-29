@@ -6,12 +6,12 @@ in a window on a desktop, which is where the development happens.
 
 The game runs on **libmgba** in-process, and the companion (party, bag, map,
 guide, dex, battle, trainer card) is drawn as an overlay over it. The companion
-is the portable C core from [`3ds/core`](../3ds/core) - unchanged, shared with
-the 3DS port - so both ports read and draw the game the same way.
+is the portable C core from [`3ds/core`](../3ds/core) - unchanged, so every part
+of the app is read and drawn the same way.
 
 **Status: phase 4.** The host boots a GBA game with sound, controller input,
 saves, save backups, one save state and fast-forward; the companion runs as an
-overlay over the game, driven by a D-pad cursor instead of the 3DS's stylus; and
+overlay over the game, driven by a D-pad cursor; and
 started without a game it lists `/roms/gba` so the PortMaster port can be
 launched from the Ports menu. `arkos/` holds the port package, its build script
 and `deploy.sh`. Phase 3 is closed: it has run on the R36S, the DEX's EVOLVE was
@@ -59,13 +59,24 @@ does the tapping: the D-pad moves it onto the next real control on the screen
 `B` goes back, `L1`/`R1` change tab, `START` (or `L2`) puts it away again. On a
 list, pushing past the last row scrolls it, the way a finger drag would.
 
-The tabs are PARTY, BAG, MAP, GUIDE, DEX, BATTLE (it takes the DEX slot during a
-battle and gives it back afterwards), SETTINGS (the gear) and the TRAINER CARD
-(from SETTINGS). SETTINGS holds the screen mode, the fast-forward speed, SAVE
-STATE and LOAD STATE (one slot per game, beside the ROM in
-`pokedaisy-states/`), and LEAVE GAME. SAVE and LOAD ask first; `A` on YES does
-it. A save state never carries the battery save, and the save is backed up
-before every load.
+The tabs are the ones the game has, in the app's order: PARTY, DEX, MAP, BAG and
+GUIDE, plus the TRAINER CARD once you put it on the bar in `SETTINGS > TAB BAR`.
+A tab exists only when its data does - DEX needs the ROM's dex tables, GUIDE its
+pages, CARD its art - and what the bar has no room for opens from `MORE` (the
+nine squares left of the gear, with no chip at all when nothing is hidden). Up
+to five tabs sit next to the gear; hide one in `TAB BAR` and the game's other
+tabs take the place, as the app does. In a battle BATTLE comes first and takes
+one of their places, so the last tab moves behind `MORE` until the battle ends.
+SETTINGS (the gear) is not on the bar. SETTINGS holds the screen mode, the
+fast-forward speed, the bar's own pick (`TAB BAR`), the four switches in
+`TWEAKS` (party icons, map cursor, tab animations, jump to battle), SAVE STATE
+and LOAD STATE (one slot per game, beside the ROM in `pokedaisy-states/`), and
+LEAVE GAME. SAVE and LOAD ask first; `A` on YES does it. A save state never
+carries the battery save, and the save is backed up before every load.
+
+Those choices, and which tabs you put on the bar, live in `pokedaisy.ini` beside
+the ROM (`--settings FILE` for somewhere else); a missing or hand-edited file
+falls back to the defaults, and unknown keys are ignored.
 
 What the companion can read is the portable core's list, not every game:
 FireRed, LeafGreen and Emerald, English, so far - `pd_game`'s game codes. Any
@@ -73,8 +84,8 @@ other GBA game plays, and the overlay says so instead of guessing. Hacks over
 16 MB are recognised as hacks and left alone for now; more games and languages
 are phase 5 in the plan.
 
-**One wart:** the SETTINGS tab's SCREEN row uses the 3DS port's labels
-(`SHARP 1.5x`, `PIXEL 1x`). On this port they mean *fit the screen*, *whole
+**One wart:** the SETTINGS tab's SCREEN row uses the core's labels
+(`SHARP 1.5x`, `PIXEL 1x`). Here they mean *fit the screen*, *whole
 pixels only* and *stretch*, which is what the host does with them.
 
 `--fullscreen` is what the handheld's launch script uses. `--scale fit` (the
@@ -87,7 +98,7 @@ default) fills the screen with whole pixels left as they are; `integer` keeps
 The save is `<rom>.srm` when one already exists (RetroArch's name), otherwise
 `<rom>.sav` (mGBA's), next to the ROM. Before every start the save is copied to
 `<rom>.backup-YYYYmmdd-HHMMSS.sav` next to it, newest 10 kept - the repo's "save
-files are sacred" rule, and the same thing the 3DS port does.
+files are sacred" rule.
 
 **Carry on where you left off.** Leaving a game writes
 `pokedaisy-states/<rom>.resume`, and starting the game again loads it, so

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Count how much of the app is ported, from PORTING.md.
 
-The number in README.md is this script's TOTAL line: a feature finished on both
-hosts counts 1, a partial one (one host only, or narrower than the app) counts
-0.5, and rows marked not applicable are left out. Run it after changing a row in
-PORTING.md and paste the table in. Rows that are not player features are skipped:
-the data pipeline (D-), the phone checks (V-) and the save editor (SE-), which
-upstream keeps behind a flag that 1.3.2 does not ship.
+The number in README.md is this script's TOTAL line: a feature the port has
+counts 1, a partial one (narrower than the app: fewer games, fewer pages, fixed
+instead of configurable) counts 0.5, and rows marked not applicable are left
+out. Run it after changing a row in PORTING.md and paste the table in. Rows that
+are not player features are skipped: the data pipeline (D-), the phone checks
+(V-) and the save editor (SE-), which upstream keeps behind a flag that 1.3.2
+does not ship.
 """
 
 import collections
@@ -37,32 +38,32 @@ def area_of(feature_id):
 
 def rows(path):
     for line in open(path, encoding="utf-8"):
-        match = re.match(r"^\\| ([A-Z][A-Z0-9-]*) \\|", line)
+        match = re.match(r"^\| ([A-Z][A-Z0-9-]*) \|", line)
         if not match:
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) != 6 or cells[0] == "ID":
+        if len(cells) != 5 or cells[0] == "ID":
             continue
-        yield cells[0], cells[3], cells[4]
+        yield cells[0], cells[3]
 
 
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "PORTING.md"
     seen = collections.defaultdict(lambda: [0, 0, 0, 0])  # rows, done, partial, missing
     skipped = not_applicable = 0
-    for feature_id, linux, handheld in rows(path):
+    for feature_id, status in rows(path):
         area = area_of(feature_id)
         if area is None:
             skipped += 1
             continue
-        if linux == "n/a" or handheld == "n/a":
+        if status == "n/a":
             not_applicable += 1
             continue
         counts = seen[area]
         counts[0] += 1
-        if linux == "✅" and handheld == "✅":
+        if status == "✅":
             counts[1] += 1
-        elif linux == "—" and handheld == "—":
+        elif status == "—":
             counts[3] += 1
         else:
             counts[2] += 1

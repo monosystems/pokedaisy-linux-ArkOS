@@ -33,6 +33,25 @@ static void gender_mark(struct pd_canvas* c, int x, int y, enum pd_gender g) {
     if (g == PD_GENDER_FEMALE) pd_text(c, x, y, "♀", FEMALE, FEMALE_SHADOW);
 }
 
+// The icon's two frames, at the game's HP-based speed (PartySlotLayout: a
+// healthy Pokémon's six GBA frames up to a nearly fainted one's 22). The app
+// animates the slot the game's cursor is on; this port's selected slot is the
+// one under the press, which is also the one it draws selected.
+static int icon_shift(const struct pd_ui* ui, const struct pd_mon* m, int slot) {
+    if (!pd_tweak_on(ui->settings, PD_TWEAK_PARTY_ICONS) || ui->pressedId != HIT_SLOT + slot) return 0;
+    static const unsigned TICKS[4] = { 6, 8, 14, 22 };
+    int level;
+    if (m->species == PD_SPECIES_EGG) level = 0;
+    else if (m->hp <= 0) return 0; // a fainted slot stands still
+    else if (m->hp >= m->maxHp) level = 0;
+    else {
+        int pct = m->hp * 100 / m->maxHp;
+        level = pct > 50 ? 1 : pct > 20 ? 2 : 3;
+    }
+    unsigned interval = TICKS[level] * 1000 / 60;
+    return ((ui->animMs / interval) & 1) ? -3 : 1;
+}
+
 static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, int x, int y, int w,
                        int h, const struct pd_mon* m, int slot) {
     char buf[40];
@@ -56,7 +75,7 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
 
     // The icon at the top left, like the game's party menu; the text beside it.
     int tx = x + 8;
-    if (pd_draw_mon_icon(c, g, m->species, x + 2, y + 1, false)) tx = x + 2 + PD_ICON + 3;
+    if (pd_draw_mon_icon(c, g, m->species, x + 2, y + 1 + icon_shift(ui, m, slot), false)) tx = x + 2 + PD_ICON + 3;
     const char* name = mon_display_name(m, buf, sizeof(buf));
     if (!egg) {
         char lv[12];

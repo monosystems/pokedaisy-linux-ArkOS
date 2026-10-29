@@ -1,6 +1,6 @@
 # TODO: what gets built, in which order
 
-The working order for the ports. `PORTING.md` says what exists and what is missing;
+The working order for the port. `PORTING.md` says what exists and what is missing;
 this file says what to pick up next, why in that order, and how a task counts as
 done. Every item names the rows it closes, so the percentage in `README.md` can be
 checked with `python3 porting_stats.py` when the item lands.
@@ -9,7 +9,7 @@ checked with `python3 porting_stats.py` when the item lands.
 
 - One item per change (or per small series). When it lands: flip its rows in
   `PORTING.md`, run `porting_stats.py`, move the README number, all in one commit.
-- Done means: the 3DS preview shot or the Linux smoke test shows it, the row's note
+- Done means: a preview shot or the Linux smoke test shows it, the row's note
   is rewritten from what the code does, and no table address is guessed.
 - A task that needs a new ROM table does not start before that table has a probe
   (`AGENTS.md`).
@@ -34,16 +34,21 @@ the RK3326 shares its CPU with the emulator.
 
 ## P1: free parity, no new addresses
 
-All of this reads what `3ds/core` already decodes, so it lands on both ports at
-once and carries no per-game risk. About 29 rows, roughly +13 points.
+All of this reads what `3ds/core` already decodes, so it lands in one change and
+carries no per-game risk. About 29 rows, roughly +13 points.
 
-- [ ] **P1.1 Tab bar rules.** A battle puts `BATTLE` first and the bar holds one
+- [x] **P1.1 Tab bar rules.** A battle puts `BATTLE` first and the bar holds one
       chip fewer; the bar fills with the game's other tabs; `MORE` only when
       something is hidden; no `MORE` chip when nothing is. (C-02, C-04)
-      *Done when the 3DS preview shows the same five chips as the app, and a battle
+      *Done when the preview shows the same five chips as the app, and a battle
       shot shows the sixth at the front with the last one gone.*
-- [ ] **P1.2 Settings for the bar and the tweaks.** A `TAB BAR` page (shown/hidden
+- [x] **P1.2 Settings for the bar and the tweaks.** A `TAB BAR` page (shown/hidden
       per tab) and the four `TWEAKS` switches. (C-03, C-07) — needs P1.1's tab list.
+      *Done: the six pickable tabs (`PARTY` to `CARD`) say `SHOWN`/`HIDDEN`, the
+      title counts `n/5`, and a full bar gives the app's notice; the four switches
+      each drive their own animation or habit. The preview has them as
+      `-settings-tabs*`, `-settings-tweaks*`, `-tab-slide-*` and `-battle-nojump`,
+      and `PORTING.md` takes the icon bounce as C-P-04's half.*
 - [ ] **P1.3 Title screen.** `PARTY`, `BAG`, `MAP` and `CARD` show the game's empty
       slots with a blinking `PRESS START` instead of zeros, until the field is
       readable. (C-05)
@@ -82,18 +87,16 @@ once and carries no per-game risk. About 29 rows, roughly +13 points.
 
 ## P2: host quality of life, no game data
 
-Both hosts, testable on a desktop. About 14 rows, roughly +6 points.
+Host side, testable on a desktop. About 14 rows, roughly +6 points.
 
 - [ ] **P2.1 Ten state slots.** Thumbnail, date and `SAVE` / `LOAD` per slot, plus
-      `UNDO SAVE` and `UNDO LOAD`; host side on Linux, the core draws the grid.
+      `UNDO SAVE` and `UNDO LOAD`; host side, the core draws the grid.
       (H-18, H-19, C-ST-01, C-ST-02, C-ST-03)
 - [ ] **P2.2 Slot hotkeys and the current slot.** (H-20, C-ST-04) — after P2.1.
-- [ ] **P2.3 Resume on the 3DS.** Linux already has it; the 3DS writes the same
-      `.resume` and refuses it when the save is newer. (H-13, H-14)
-- [ ] **P2.4 Button and hotkey remapping.** A `GAME BUTTONS` page, a `HOTKEYS` page
+- [ ] **P2.3 Button and hotkey remapping.** A `GAME BUTTONS` page, a `HOTKEYS` page
       with one off switch, and `TURBO A` / `TURBO B`. (H-43, H-44, H-45)
-- [ ] **P2.5 Small host fixes.** `.srm` on the 3DS, a backup only when the save
-      changed, a screenshot hotkey. (H-10, H-12, H-53)
+- [ ] **P2.4 Small host fixes.** A backup only when the save
+      changed, a screenshot hotkey. (H-12, H-53)
 
 ## P3: the game you actually play
 

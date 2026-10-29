@@ -1,8 +1,8 @@
 // The companion on the Linux screen: the portable 3ds/core UI (pd_ui) over the
-// game, driven by a D-pad cursor instead of the 3DS's stylus. Every press moves
+// game, driven by a D-pad cursor instead of a finger. Every press moves
 // the cursor onto the nearest real hit pd_ui recorded for the last draw, and A
 // "taps" it through pd_ui_touch - so the whole UI works without a touchscreen
-// and 3ds/core stays untouched (the 3DS build keeps its stylus).
+// and 3ds/core stays untouched.
 #ifndef PD_COMPANION_INCLUDED
 #define PD_COMPANION_INCLUDED
 

@@ -5,11 +5,15 @@
 //
 //   pd_preview <fixture dir> <BPRE|BPGE|BPEE> <out dir> <name>
 //
-// writes <name>-party.png, -pressed, -summary, -battle, -bag, -bag-item,
-// -bag-scrolled, -bag-pocket, -settings, -pick-screen, -confirm-save, the MAP,
-// the DEX (list, entry, EVOLVE, next, the other dex), the GUIDE and the CARD.
+// writes <name>-party.png, -pressed, -pressed-bounce, -summary, -battle,
+// -battle-nojump, -bag, -bag-item, -bag-scrolled, -bag-pocket, -settings,
+// -pick-screen, -confirm-save, -settings-tabs (and -hidden, -full, -picked),
+// -settings-tweaks (and -off), -tab-slide, the MAP, the DEX (list, entry,
+// EVOLVE, next, the other dex), the GUIDE and the CARD.
 // With a ROM whose map art the port finds, the MAP shots come too; without one
-// they are skipped, and the DEX needs a ROM with its tables.
+// they are skipped, and the DEX needs a ROM with its tables. The BATTLE page,
+// and MORE's, need a battle (which pushes a tab behind MORE); the TAB BAR page's
+// full-bar notice and its pick of the bar need the TRAINER CARD's art.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +22,7 @@
 #include "../core/pd_card.h"
 #include "../core/pd_romart.h"
 #include "../core/pd_game.h"
+#include "../core/pd_settings.h"
 #include "../core/pd_snapshot.h"
 #include "../core/pd_ui.h"
 #include "../core/pd_ui_internal.h"
@@ -169,6 +174,13 @@ static void press(struct preview* p, int id, int dy) {
 static void release(struct preview* p) {
     pd_ui_touch(p->ui, 0, 0, false);
     draw(p);
+    // A tab change starts its slide (TWEAKS > TAB ANIMATIONS); every shot
+    // wants the tab at rest, so let it arrive. The slide shots below drive
+    // pd_ui_tick themselves.
+    if (p->ui->tabSlideMs) {
+        pd_ui_tick(p->ui, 400);
+        draw(p);
+    }
 }
 
 static void tap(struct preview* p, int id, int dy) {
@@ -222,7 +234,10 @@ int main(int argc, char** argv) {
     static uint32_t px[PD_UI_WIDTH * PD_UI_HEIGHT];
     struct pd_canvas c;
     pd_canvas_init(&c, PD_UI_WIDTH, PD_UI_HEIGHT, px);
-    struct pd_settings settings = { .screenMode = PD_SCREEN_SHARP, .ffSpeed = 2 };
+    struct pd_settings settings;
+    pd_settings_defaults(&settings);
+    settings.screenMode = PD_SCREEN_SHARP;
+    settings.ffSpeed = 2;
     struct pd_ui ui;
     pd_ui_init(&ui, &settings);
     shotUi = &ui;
@@ -245,18 +260,64 @@ int main(int argc, char** argv) {
     // its summary opens.
     press(&p, HIT_SLOT + 1, 0);
     shot(out, name, "pressed", px);
+    // TWEAKS > PARTY ICONS MOVE: the held slot's icon bounces on the game's
+    // two frames (six GBA frames apart at full HP).
+    pd_ui_tick(&ui, 120);
+    draw(&p);
+    shot(out, name, "pressed-bounce", px);
     release(&p);
     shot(out, name, "summary", px);
     tap(&p, HIT_BACK, 0);
 
-    // BATTLE has a chip only while a battle is on.
-    ui.tab = PD_TAB_BATTLE;
-    draw(&p);
-    shot(out, name, "battle", px);
-    if (has_hit(&p, HIT_BATTLE_SUGGEST)) {
-        tap(&p, HIT_BATTLE_SUGGEST, 0);
-        shot(out, name, "battle-suggest", px);
-        tap(&p, HIT_BATTLE_INFO, 0);
+    // BATTLE has a chip only while a battle is on, at the front of the bar
+    // (C-04): out of a battle the tab doesn't exist and the page is shot in
+    // the trainer battle below (`-trainer*`).
+    if (has_hit(&p, HIT_TAB + PD_TAB_BATTLE)) {
+        ui.tab = PD_TAB_BATTLE;
+        draw(&p);
+        shot(out, name, "battle", px);
+        if (has_hit(&p, HIT_BATTLE_SUGGEST)) {
+            tap(&p, HIT_BATTLE_SUGGEST, 0);
+            shot(out, name, "battle-suggest", px);
+            tap(&p, HIT_BATTLE_INFO, 0);
+        }
+        // TWEAKS > JUMP TO BATTLE off: the chip still leads the bar, but the
+        // companion stays on the tab it was on (the app's switch).
+        unsigned tweaks = settings.tweaks;
+        settings.tweaks &= ~PD_TWEAK_BIT(PD_TWEAK_JUMP_BATTLE);
+        ui.tab = PD_TAB_PARTY;
+        ui.battleWasOn = false;
+        pd_ui_update(&ui, &snap);
+        draw(&p);
+        shot(out, name, "battle-nojump", px);
+        settings.tweaks = tweaks;
+        ui.battleWasOn = false;
+        pd_ui_update(&ui, &snap);
+        draw(&p);
+        // MORE, the battle's sixth chip: the tab the bar gave up opens from
+        // it, and BACK returns there (C-02).
+        if (has_hit(&p, HIT_MORE)) {
+            tap(&p, HIT_MORE, 0);
+            shot(out, name, "more", px);
+            // Its TAB BAR button, under the grid: straight into SETTINGS' pick.
+            if (has_hit(&p, HIT_MORE_TAB_BAR)) {
+                tap(&p, HIT_MORE_TAB_BAR, 0);
+                shot(out, name, "more-tab-bar", px);
+                pd_ui_back(&ui);
+                draw(&p);
+                tap(&p, HIT_MORE, 0);
+            }
+            if (ui.moreCount && has_hit(&p, HIT_TAB + (int) ui.more[0])) {
+                tap(&p, HIT_TAB + (int) ui.more[0], 0);
+                if (has_hit(&p, HIT_NOTICE_OK)) tap(&p, HIT_NOTICE_OK, 0);
+                shot(out, name, "more-tab", px);
+                pd_ui_back(&ui);
+                draw(&p);
+                shot(out, name, "more-back", px);
+                pd_ui_back(&ui);
+                draw(&p);
+            }
+        }
     }
 
     // BAG: a tapped item shows its description; a drag scrolls the list; the
@@ -284,6 +345,52 @@ int main(int argc, char** argv) {
     printf("action %d\n", pd_ui_take_action(&ui));
     host.ffOn = false;
 
+    // TAB BAR (C-03): every tab as SHOWN or HIDDEN. Hide GUIDE and the game's
+    // other tab takes its place; with the bar full again, GUIDE's row says so
+    // instead of coming back.
+    tap(&p, HIT_SETTING + SETTING_TAB_BAR, 0);
+    shot(out, name, "settings-tabs", px);
+    if (has_hit(&p, HIT_SETTINGS_TAB + PD_TAB_GUIDE)) {
+        tap(&p, HIT_SETTINGS_TAB + PD_TAB_GUIDE, 0);
+        shot(out, name, "settings-tabs-hidden", px);
+        if (has_hit(&p, HIT_SETTINGS_TAB + PD_TAB_CARD)) {
+            tap(&p, HIT_SETTINGS_TAB + PD_TAB_CARD, 0);
+            tap(&p, HIT_SETTINGS_TAB + PD_TAB_GUIDE, 0);
+            shot(out, name, "settings-tabs-full", px);
+            printf("picked %d/%d, tabs 0x%02x\n", ui.tabsPicked, PD_BAR_TABS, settings.tabsShown);
+            tap(&p, HIT_YES, 0);
+        }
+        tap(&p, HIT_SETTINGS_BACK, 0);
+        shot(out, name, "settings-picked", px);
+    } else {
+        tap(&p, HIT_SETTINGS_BACK, 0);
+    }
+
+    // TWEAKS (C-07): the four switches, each on by default.
+    tap(&p, HIT_SETTING + SETTING_TWEAKS, 0);
+    shot(out, name, "settings-tweaks", px);
+    tap(&p, HIT_TWEAK + PD_TWEAK_TAB_ANIM, 0);
+    shot(out, name, "settings-tweaks-off", px);
+    tap(&p, HIT_TWEAK + PD_TWEAK_TAB_ANIM, 0);
+    printf("tweaks 0x%02x\n", settings.tweaks);
+    tap(&p, HIT_SETTINGS_BACK, 0);
+
+    // TWEAKS > TAB ANIMATIONS on: a tab slides in from its side (the map's
+    // sits left of SETTINGS, so it comes from the left) instead of cutting.
+    // Driven by hand, since a tap settles the slide (release above).
+    int tx, ty;
+    centre_of(&p, HIT_TAB + PD_TAB_MAP, &tx, &ty);
+    pd_ui_touch(&ui, tx, ty, true);
+    draw(&p);
+    pd_ui_touch(&ui, tx, ty, false);
+    draw(&p);
+    shot(out, name, "tab-slide-1", px);
+    pd_ui_tick(&ui, 110);
+    draw(&p);
+    shot(out, name, "tab-slide-2", px);
+    pd_ui_tick(&ui, 400);
+    draw(&p);
+
     // MAP: where the player is, a tapped place, the cursor's other size, PLACES.
     tap(&p, HIT_TAB + PD_TAB_MAP, 0);
     shot(out, name, "map", px);
@@ -300,68 +407,74 @@ int main(int argc, char** argv) {
         draw(&p);
     }
 
-    // POKéDEX: the list, scrolled, an entry, the next one, the other dex.
-    // (In a battle DEX's chip is BATTLE's.)
-    ui.tab = PD_TAB_DEX;
-    draw(&p);
-    shot(out, name, "dex", px);
-    if (game.rom && ui.tab == PD_TAB_DEX && ui.hitCount > 0) {
-        drag(&p, HIT_DEX_LIST, -120);
-        shot(out, name, "dex-scrolled", px);
-        ui.dexOpen = 6;
+    // POKéDEX: the list, scrolled, an entry, the next one, the other dex. Its
+    // chip exists only when the ROM has the tables (C-04), so a run without
+    // one skips these.
+    if (has_hit(&p, HIT_TAB + PD_TAB_DEX)) {
+        ui.tab = PD_TAB_DEX;
         draw(&p);
-        shot(out, name, "dex-entry", px);
-        if (has_hit(&p, HIT_DEX_EVOLVE)) {
-            tap(&p, HIT_DEX_EVOLVE, 0);
-            shot(out, name, "dex-evolve", px);
-            if (has_hit(&p, HIT_DEX_EVO_ROW)) {
-                tap(&p, HIT_DEX_EVO_ROW, 0);
-                shot(out, name, "dex-evolve-next", px);
+        shot(out, name, "dex", px);
+        if (game.rom && has_hit(&p, HIT_DEX_LIST)) {
+            drag(&p, HIT_DEX_LIST, -120);
+            shot(out, name, "dex-scrolled", px);
+            ui.dexOpen = 6;
+            draw(&p);
+            shot(out, name, "dex-entry", px);
+            if (has_hit(&p, HIT_DEX_EVOLVE)) {
+                tap(&p, HIT_DEX_EVOLVE, 0);
+                shot(out, name, "dex-evolve", px);
+                if (has_hit(&p, HIT_DEX_EVO_ROW)) {
+                    tap(&p, HIT_DEX_EVO_ROW, 0);
+                    shot(out, name, "dex-evolve-next", px);
+                }
+                tap(&p, HIT_DEX_INFO, 0);
             }
-            tap(&p, HIT_DEX_INFO, 0);
+            tap(&p, HIT_DEX_NEXT, 0);
+            shot(out, name, "dex-next", px);
+            tap(&p, HIT_BACK, 0);
+            tap(&p, HIT_DEX_TOGGLE, 0);
+            shot(out, name, "dex-other", px);
         }
-        tap(&p, HIT_DEX_NEXT, 0);
-        shot(out, name, "dex-next", px);
-        tap(&p, HIT_BACK, 0);
-        tap(&p, HIT_DEX_TOGGLE, 0);
-        shot(out, name, "dex-other", px);
     }
 
     // GUIDE: the first-open notice, then each page (an entry's hint and
-    // answer on the first static one).
-    ui.tab = PD_TAB_GUIDE;
-    draw(&p);
-    shot(out, name, "guide", px);
-    if (has_hit(&p, HIT_NOTICE_OK)) {
-        tap(&p, HIT_NOTICE_OK, 0);
-        static const char* const PAGE_SHOTS[] = { "guide-p0", "guide-p1", "guide-p2", "guide-p3", "guide-p4" };
-        for (int page = 0; page < 5 && has_hit(&p, HIT_GUIDE_PAGE + page); page++) {
-            tap(&p, HIT_GUIDE_PAGE + page, 0);
-            shot(out, name, PAGE_SHOTS[page], px);
-            if (has_hit(&p, HIT_GUIDE_LIST)) {
-                drag(&p, HIT_GUIDE_LIST, -100);
-                if (ui.guideScroll > 0) {
-                    char what[32];
-                    snprintf(what, sizeof(what), "%s-scrolled", PAGE_SHOTS[page]);
-                    shot(out, name, what, px);
-                    drag(&p, HIT_GUIDE_LIST, 400);
+    // answer on the first static one). Its chip needs this game's guide, so a
+    // game without one has no page to shoot (C-04).
+    if (has_hit(&p, HIT_TAB + PD_TAB_GUIDE)) {
+        ui.tab = PD_TAB_GUIDE;
+        draw(&p);
+        shot(out, name, "guide", px);
+        if (has_hit(&p, HIT_NOTICE_OK)) {
+            tap(&p, HIT_NOTICE_OK, 0);
+            static const char* const PAGE_SHOTS[] = { "guide-p0", "guide-p1", "guide-p2", "guide-p3", "guide-p4" };
+            for (int page = 0; page < 5 && has_hit(&p, HIT_GUIDE_PAGE + page); page++) {
+                tap(&p, HIT_GUIDE_PAGE + page, 0);
+                shot(out, name, PAGE_SHOTS[page], px);
+                if (has_hit(&p, HIT_GUIDE_LIST)) {
+                    drag(&p, HIT_GUIDE_LIST, -100);
+                    if (ui.guideScroll > 0) {
+                        char what[32];
+                        snprintf(what, sizeof(what), "%s-scrolled", PAGE_SHOTS[page]);
+                        shot(out, name, what, px);
+                        drag(&p, HIT_GUIDE_LIST, 400);
+                    }
                 }
             }
-        }
-        // The end of HERE (PEOPLE, ITEMS).
-        tap(&p, HIT_GUIDE_PAGE, 0);
-        drag(&p, HIT_GUIDE_LIST, -4000);
-        shot(out, name, "guide-p0-end", px);
-        // A hint, then its answer, on the last page (STUCK? has hints).
-        int last = 0;
-        while (has_hit(&p, HIT_GUIDE_PAGE + last + 1)) last++;
-        tap(&p, HIT_GUIDE_PAGE + last, 0);
-        int row = first_hit(&p, HIT_GUIDE_ROW, HIT_GUIDE_ROW + 800);
-        if (row >= 0) {
-            tap(&p, row, 0);
-            shot(out, name, "guide-hint", px);
-            tap(&p, row, 0);
-            shot(out, name, "guide-answer", px);
+            // The end of HERE (PEOPLE, ITEMS).
+            tap(&p, HIT_GUIDE_PAGE, 0);
+            drag(&p, HIT_GUIDE_LIST, -4000);
+            shot(out, name, "guide-p0-end", px);
+            // A hint, then its answer, on the last page (STUCK? has hints).
+            int last = 0;
+            while (has_hit(&p, HIT_GUIDE_PAGE + last + 1)) last++;
+            tap(&p, HIT_GUIDE_PAGE + last, 0);
+            int row = first_hit(&p, HIT_GUIDE_ROW, HIT_GUIDE_ROW + 800);
+            if (row >= 0) {
+                tap(&p, row, 0);
+                shot(out, name, "guide-hint", px);
+                tap(&p, row, 0);
+                shot(out, name, "guide-answer", px);
+            }
         }
     }
 

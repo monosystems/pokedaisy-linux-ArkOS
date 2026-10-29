@@ -7,7 +7,7 @@ own menu style.
 
 Based on **PokeDaisy by Lidor Itzhari** - https://github.com/lidor30/pokedaisy
 (GPLv3, plus the credit term in the `NOTICE`). This port lives in the same repo
-under `linux/`; the companion is the portable C core the 3DS port uses
+under `linux/`; the companion is the portable C core the host draws
 (`3ds/core`, unchanged).
 
 ## Install

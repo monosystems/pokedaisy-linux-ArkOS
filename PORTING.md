@@ -1,14 +1,14 @@
-# Porting inventory: the app's features against the ports
+# Porting inventory: the app's features against the port
 
-What the upstream app can do, what `linux/` and `3ds/` can do today, and what a
-port would have to build for each missing piece. The upstream trees are read
-only (see `AGENTS.md`); this file is the ports' own working list, so it lives
-here and not in `docs/`.
+What the upstream app can do, what this port can do today, and what it would
+have to build for each missing piece. The upstream trees are read only (see
+`AGENTS.md`); this file is the port's own working list, so it lives here and not
+in `docs/`.
 
-**Status of this list:** taken from the ports at commit `36b27d3` by reading
-`linux/README.md`, `3ds/README.md`, `linux/PLAN.md` and the code in `3ds/core`,
-`3ds/ctr` and `linux/`. It is a code inspection, not a run: every row marked
-done should still be seen once on the hardware.
+**Status of this list:** taken from the port at commit `36b27d3` by reading
+`linux/README.md`, `linux/PLAN.md` and the core in `3ds/core`. It is a code
+inspection, not a run: every row marked done should still be seen once on the
+hardware.
 
 ## How to use it
 
@@ -18,9 +18,9 @@ done should still be seen once on the hardware.
 - **When a feature lands, its row changes in the same commit** (the rule
   `docs/ROM_FEATURES.md` uses upstream). A row that is wrong is worse than a
   missing one, because the plan is built on it.
-- Effort is for the port that does not have it yet, on both hosts:
+- Effort is for what the port does not have yet:
   `S` a few hours, `M` a day or two, `L` a week, `XL` more than that or a
-  rewrite of how a host draws.
+  rewrite of how the host draws.
 
 ## Status marks
 
@@ -62,240 +62,254 @@ kept, so a row can be read next to its manual page.
 
 ### Playing and loading
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| H-01 | GBA in-process on mGBA 0.10.5 | `third_party/mgba` | ✅ | ✅ | Both hosts link the same submodule. |
-| H-02 | Game Boy / Game Boy Color games play | `README.md`, `GbField.kt` | — | — | mGBA can run them, but the hosts only offer `.gba`, and the companion has no GB reader. Needs a platform switch, menu extensions and the GB side of the companion. `L` |
-| H-03 | Nintendo DS games play | `third_party/melonds` | — | — | Not realistic on the R36S. On the 3DS, handing the `.nds` to TWiLight Menu or nds-bootstrap is the sane route, not melonDS in-process. `M` for the hand-off, `XL` for melonDS |
-| H-04 | Sound, muted while fast-forwarding | `audio.c`, ndsp | ✅ | ✅ | No volume setting, and no separate mute key. `S` |
-| H-05 | Start a chosen ROM from the command line or a launcher | `LaunchActivity` | ✅ | ✅ | `pokedaisy <game.gba>`, `3dsx` with a list. |
-| H-06 | Game list when started without a ROM | `LibraryScreen.kt` | ✅ | ✅ | `/roms/gba` on Linux, `sdmc:/pokedaisy/roms` on 3DS. |
-| H-07 | Zipped ROMs (`.zip`, `.7z`) | `RomIntake`, Apache Commons Compress | — | — | Needs a small inflate for zip; 7z would mean a new dependency. `M` / `L` |
-| H-08 | Library tags (NOT SUPPORTED, PARTIALLY SUPPORTED, HACKS) | `GameTitles.kt` | — | — | Depends on S-08. `S` once matching exists |
+| H-01 | GBA in-process on mGBA 0.10.5 | `third_party/mgba` | ✅ | The host links the same submodule. |
+| H-02 | Game Boy / Game Boy Color games play | `README.md`, `GbField.kt` | — | mGBA can run them, but the hosts only offer `.gba`, and the companion has no GB reader. Needs a platform switch, menu extensions and the GB side of the companion. `L` |
+| H-03 | Nintendo DS games play | `third_party/melonds` | — | No DS core fits the RK3326. `XL` |
+| H-04 | Sound, muted while fast-forwarding | `audio.c`, ndsp | ✅ | No volume setting, and no separate mute key. `S` |
+| H-05 | Start a chosen ROM from the command line or a launcher | `LaunchActivity` | ✅ | `pokedaisy <game.gba>`, or the game list when started without one. |
+| H-06 | Game list when started without a ROM | `LibraryScreen.kt` | ✅ | `/roms/gba`, else `roms/` beside the binary. |
+| H-07 | Zipped ROMs (`.zip`, `.7z`) | `RomIntake`, Apache Commons Compress | — | Needs a small inflate for zip; 7z would mean a new dependency. `M` / `L` |
+| H-08 | Library tags (NOT SUPPORTED, PARTIALLY SUPPORTED, HACKS) | `GameTitles.kt` | — | Depends on S-08. `S` once matching exists |
 
 ### Saves and states
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| H-09 | Battery save next to the ROM (`.sav`) | `saves.md` | ✅ | ✅ | Same rule as mGBA's own builds. |
-| H-10 | Existing `.srm` picked up | `saves.md` | ✅ | — | `files.c` tries `.srm` before `.sav`; the 3DS host only knows `.sav`. `S` |
-| H-11 | Backup before every start, newest 10 per game | `saves.md` | ✅ | ✅ | `PD_BACKUPS` = 10 on Linux, same count in `ctr/main.c`. Seen on the R36S: a backup on start, and another before LOAD STATE. |
-| H-12 | A backup only when the save changed | `saves.md` | ◐ | ◐ | Not checked on either host; the file name carries the timestamp, so it can produce duplicates. On the R36S two backups appeared in two minutes without the save changing. `S` |
-| H-13 | Resume at the exact moment on the next start | `RESUME GAMES` | ✅ | — | Linux writes `<name>.resume` and prefers it while the save is not newer. The 3DS lists it under next steps. Seen on the R36S, written again on leaving. `M` |
-| H-14 | Resume never overwrites a newer save | `saves.md` | ✅ | n/a | `pd_resume_is_fresh` compares the save's time. |
-| H-15 | Load another save into a game, keeping the old one | `library.md` | — | — | Library UI work, needs H-08. `M` |
-| H-16 | Restore a backup from the library | `library.md` | — | — | The files exist, the UI does not. `S` |
-| H-17 | One save state per game, save and load behind a confirmation | `saves.md` | ✅ | ✅ | `SAVESTATE_RTC` only, so a state never writes an old save back. Seen on the R36S on the exFAT card, `state: saved` and `state: loaded`. |
-| H-18 | Ten state slots with a screenshot each | `saves.md`, `StatesScreen.kt` | — | — | Host side on Linux, so the core stays as it is. Needs a thumbnail path in both hosts. `M` |
-| H-19 | UNDO SAVE / UNDO LOAD | `saves.md` | — | — | Two more files per slot, and the last one kept aside. `S` |
-| H-20 | State hotkeys (SELECT + R1 / L1, slot next and prev) | `controls.md` | — | — | Fixed buttons today; see H-46. `S` |
-| H-21 | Rewind, last ~20 seconds | `saves.md` | — | — | mGBA has the frame buffer behind a flag; the cost on RK3326 and on a New 3DS has to be measured first. `M` |
+| H-09 | Battery save next to the ROM (`.sav`) | `saves.md` | ✅ | Same rule as mGBA's own builds. |
+| H-10 | Existing `.srm` picked up | `saves.md` | ✅ | `files.c` tries `.srm` before `.sav`. |
+| H-11 | Backup before every start, newest 10 per game | `saves.md` | ✅ | `PD_BACKUPS` = 10. Seen on the R36S: a backup on start, and another before LOAD STATE. |
+| H-12 | A backup only when the save changed | `saves.md` | ◐ | Not checked on either host; the file name carries the timestamp, so it can produce duplicates. On the R36S two backups appeared in two minutes without the save changing. `S` |
+| H-13 | Resume at the exact moment on the next start | `RESUME GAMES` | ✅ | The host writes `<name>.resume` and prefers it while the save is not newer. Seen on the R36S, written again on leaving. |
+| H-14 | Resume never overwrites a newer save | `saves.md` | ✅ | `pd_resume_is_fresh` compares the save's time. |
+| H-15 | Load another save into a game, keeping the old one | `library.md` | — | Library UI work, needs H-08. `M` |
+| H-16 | Restore a backup from the library | `library.md` | — | The files exist, the UI does not. `S` |
+| H-17 | One save state per game, save and load behind a confirmation | `saves.md` | ✅ | `SAVESTATE_RTC` only, so a state never writes an old save back. Seen on the R36S on the exFAT card, `state: saved` and `state: loaded`. |
+| H-18 | Ten state slots with a screenshot each | `saves.md`, `StatesScreen.kt` | — | Host side, so the core stays as it is. Needs a thumbnail path in the host. `M` |
+| H-19 | UNDO SAVE / UNDO LOAD | `saves.md` | — | Two more files per slot, and the last one kept aside. `S` |
+| H-20 | State hotkeys (SELECT + R1 / L1, slot next and prev) | `controls.md` | — | Fixed buttons today; see H-46. `S` |
+| H-21 | Rewind, last ~20 seconds | `saves.md` | — | mGBA has the frame buffer behind a flag; the cost on the RK3326 has to be measured first. `M` |
 
 ### Speed
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| H-22 | Fast-forward while a button is held | `fast-forward.md` | ✅ | ✅ | Space or pad R2 on Linux, ZR on a New 3DS. |
-| H-23 | Fast-forward as a toggle that survives the session | `fast-forward.md` | ◐ | ✅ | The 3DS has the chip and its `SETTING_FF` row; on Linux it is hold only. `S` |
-| H-24 | FF speeds 1.5x to 10x plus `INFINITE` | `fast-forward.md` | ◐ | ◐ | Both ports stop at 2x to 4x (`PD_FF_MIN` / `PD_FF_MAX`). The host paces the frames; wider steps are cheap. `S` |
-| H-25 | `FF MODE` SMART (normal speed in menus and on the map) | `fast-forward.md` | — | — | Needs the core to expose "a menu is open" per game, which is per-game work again. `M` |
-| H-26 | `FF MUSIC` STEADY / SPED-UP / OFF | `fast-forward.md` | — | — | Today the sound is muted while fast-forwarding. `STEADY` also needs a recorded song cache, which is a project of its own. `S` for OFF / SPED-UP, `XL` for STEADY |
-| H-27 | `GAME SPEED` a game stays at (0.25x to 4x) | `fast-forward.md` | — | — | A setting plus a frame divisor. `S` |
-| H-28 | Scene speeds: battle, text, menu, bike, surf | `fast-forward.md` | — | — | Mostly the same per-game detection as H-25. `M` |
-| H-29 | Slow motion while held | `fast-forward.md` | — | — | The mirror of the hold fast-forward. `S` |
-| H-30 | `SOFT RESET` hotkey | `controls.md` | — | — | mGBA has reset; it needs a key chord and the ROM copy to survive it. `S` |
+| H-22 | Fast-forward while a button is held | `fast-forward.md` | ✅ | Hold `Space` or pad `R2`. |
+| H-23 | Fast-forward as a toggle that survives the session | `fast-forward.md` | ◐ | `SETTING_FF` picks 2x / 3x / 4x and the `▶▶` chip toggles it; the app goes to 10x (`H-24`). `S` |
+| H-24 | FF speeds 1.5x to 10x plus `INFINITE` | `fast-forward.md` | ◐ | The port stops at 2x to 4x (`PD_FF_MIN` / `PD_FF_MAX`). The host paces the frames; wider steps are cheap. `S` |
+| H-25 | `FF MODE` SMART (normal speed in menus and on the map) | `fast-forward.md` | — | Needs the core to expose "a menu is open" per game, which is per-game work again. `M` |
+| H-26 | `FF MUSIC` STEADY / SPED-UP / OFF | `fast-forward.md` | — | Today the sound is muted while fast-forwarding. `STEADY` also needs a recorded song cache, which is a project of its own. `S` for OFF / SPED-UP, `XL` for STEADY |
+| H-27 | `GAME SPEED` a game stays at (0.25x to 4x) | `fast-forward.md` | — | A setting plus a frame divisor. `S` |
+| H-28 | Scene speeds: battle, text, menu, bike, surf | `fast-forward.md` | — | Mostly the same per-game detection as H-25. `M` |
+| H-29 | Slow motion while held | `fast-forward.md` | — | The mirror of the hold fast-forward. `S` |
+| H-30 | `SOFT RESET` hotkey | `controls.md` | — | mGBA has reset; it needs a key chord and the ROM copy to survive it. `S` |
 
 ### Screen
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| H-31 | Aspect: the GBA's own shape, pixel for pixel, stretched | `screen.md` | ✅ | ✅ | Linux `fit` / `integer` / `stretch`, 3DS `PIXEL 1x` / `SHARP 1.5x` / `STRETCH`. |
-| H-32 | `EXPAND`: the map drawn past the GBA's edges | `screen.md`, `WideScreen.*` | — | — | The app's biggest feature and the most expensive one: per-frame map, tiles and sprite rebuilds for each supported game. `XL`, and unclear on RK3326 |
-| H-33 | `ZOOM` and looking around with the right stick (EXPAND only) | `screen.md` | — | — | Follows H-32. `L` |
-| H-34 | Shaders: LCD grid, scanlines, CRT, the GBA's own colours | `screen.md` | — | — | Per-frame post-processing. On the RK3326 it competes with the emulator; measure before promising it. `M` on a desktop, `L` on the handheld |
-| H-35 | Edge smoothing (xBRZ, xBR, ScaleFX) | `screen.md` | — | — | The app uses libretro's code. `L` |
-| H-36 | `UNLIT SCREEN` | `screen.md` | — | — | A shader variant. `S` once H-34 exists |
-| H-37 | Overlays and frames, own and imported RetroArch ones | `screen.md` | — | — | Drawing is easy; reading `.cfg` and `.zip` and the file picker is the work. `M` |
-| H-38 | Status bar (game, place, money, clock, battery) | `screen.md` | — | — | The core already reads place and money, so this is mostly drawing plus a battery call per host. `M` |
-| H-39 | `DARK MODE` for the app's windows | `screen.md`, `DarkMode.kt` | — | — | `pd_style.c` holds one palette; a second one is mechanical. Screens are 640x480 and 320x240, so this is a nice-to-have. `M` |
-| H-40 | `FPS / CPU` readout | `screen.md` | ◐ | — | Linux prints `stats:` to the log and has `--stats`; nothing on screen. `S` |
-| H-41 | `LIGHT COMPANION` redraw throttling | `screen.md` | — | — | Worth doing on the RK3326 if the companion turns out to cost frames (phase 3 measurement). `S` |
+| H-31 | Aspect: the GBA's own shape, pixel for pixel, stretched | `screen.md` | ✅ | `fit` / `integer` / `stretch`. |
+| H-32 | `EXPAND`: the map drawn past the GBA's edges | `screen.md`, `WideScreen.*` | — | The app's biggest feature and the most expensive one: per-frame map, tiles and sprite rebuilds for each supported game. `XL`, and unclear on RK3326 |
+| H-33 | `ZOOM` and looking around with the right stick (EXPAND only) | `screen.md` | — | Follows H-32. `L` |
+| H-34 | Shaders: LCD grid, scanlines, CRT, the GBA's own colours | `screen.md` | — | Per-frame post-processing. On the RK3326 it competes with the emulator; measure before promising it. `M` on a desktop, `L` on the handheld |
+| H-35 | Edge smoothing (xBRZ, xBR, ScaleFX) | `screen.md` | — | The app uses libretro's code. `L` |
+| H-36 | `UNLIT SCREEN` | `screen.md` | — | A shader variant. `S` once H-34 exists |
+| H-37 | Overlays and frames, own and imported RetroArch ones | `screen.md` | — | Drawing is easy; reading `.cfg` and `.zip` and the file picker is the work. `M` |
+| H-38 | Status bar (game, place, money, clock, battery) | `screen.md` | — | The core already reads place and money, so this is mostly drawing plus a battery call per host. `M` |
+| H-39 | `DARK MODE` for the app's windows | `screen.md`, `DarkMode.kt` | — | `pd_style.c` holds one palette; a second one is mechanical. Screens are 640x480 and 320x240, so this is a nice-to-have. `M` |
+| H-40 | `FPS / CPU` readout | `screen.md` | ◐ | Linux prints `stats:` to the log and has `--stats`; nothing on screen. `S` |
+| H-41 | `LIGHT COMPANION` redraw throttling | `screen.md` | — | Worth doing on the RK3326 if the companion turns out to cost frames (phase 3 measurement). `S` |
 
 ### Input
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| H-42 | The GBA buttons on the pad and the keyboard | `controls.md` | ✅ | ✅ | Fixed mapping, documented in each README. |
-| H-43 | `GAME BUTTONS` remap page | `controls.md` | — | — | Needs a key capture page in the core UI plus persistence. `M` |
-| H-44 | `HOTKEYS` page, one switch to turn them all off | `controls.md` | — | — | Same machinery as H-43, and it also gives H-20 for free. `M` |
-| H-45 | `TURBO A` / `TURBO B` on any button | `controls.md` | — | — | Presses A or B on a timer in game time. `S` |
-| H-46 | `TOUCH CONTROLS` with a layout editor | `controls.md` | n/a | n/a | The R36S has no touchscreen and on the 3DS the touchscreen is the companion. |
-| H-47 | Controller hot plug while a game runs | `controls.md` | ✅ | n/a | `input.c` reopens the pad. The 3DS pad is fixed. |
-| H-48 | Analog L2 / R2 treated as presses | `controls.md` | ◐ | n/a | Depends on what the pad reports on ArkOS; check on the R36S. `S` |
-| H-49 | BACK tap (companion back) and hold (leave game) | `controls.md` | ◐ | ◐ | Linux opens the companion with L2 and leaves with `START+SELECT`; the 3DS uses B and its own exit. The split into tap and hold is not there. `S` |
+| H-42 | The GBA buttons on the pad and the keyboard | `controls.md` | ✅ | Fixed mapping, documented in each README. |
+| H-43 | `GAME BUTTONS` remap page | `controls.md` | — | Needs a key capture page in the core UI plus persistence. `M` |
+| H-44 | `HOTKEYS` page, one switch to turn them all off | `controls.md` | — | Same machinery as H-43, and it also gives H-20 for free. `M` |
+| H-45 | `TURBO A` / `TURBO B` on any button | `controls.md` | — | Presses A or B on a timer in game time. `S` |
+| H-46 | `TOUCH CONTROLS` with a layout editor | `controls.md` | n/a | The R36S has no touchscreen: the D-pad cursor presses what a finger would. |
+| H-47 | Controller hot plug while a game runs | `controls.md` | ✅ | `input.c` reopens the pad. |
+| H-48 | Analog L2 / R2 treated as presses | `controls.md` | ◐ | Depends on what the pad reports on ArkOS; check on the R36S. `S` |
+| H-49 | BACK tap (companion back) and hold (leave game) | `controls.md` | ◐ | The companion opens with L2 and the game is left with `START+SELECT`. The split into tap and hold is not there. `S` |
 
 ### App plumbing
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| H-50 | Settings kept between starts | `pd_settings.c` | ✅ | ✅ | `settings.ini` next to the data, unknown keys fall back. |
-| H-51 | The app's text in 7 languages | `companion/i18n/` | — | — | The core's ~80 labels are English. A generated table can keep them in step; the GUIDE's page text is the harder half. `M` for labels, `L` including the guide |
-| H-52 | `HELP`: the manual inside the app | `DocsScreen.kt` | — | — | The manual is Markdown and rendered by `website/src/lib/docs.js` and `DocsScreen.kt`; a C reader plus the files on the card. `M` on Linux, `L` on 3DS |
-| H-53 | Screenshots from the player's side | `render.c`, app | ◐ | — | Linux has `--screenshot FILE` for tests, no hotkey and no gallery. `S` |
-| H-54 | Launch from a frontend (ES-DE, iiSU, Cocoon) | `library.md` | ◐ | n/a | The PortMaster package and `deploy.sh` stop and restart EmulationStation; a plain cartridge-style entry would be cleaner. `S` |
-| H-55 | Update check and install | `AppUpdateFlow.kt` | n/a | n/a | PortMaster and the 3DS homebrew channels own this. |
+| H-50 | Settings kept between starts | `pd_settings.c` | ✅ | The settings file next to the data (`settings.ini` on the 3DS, `pokedaisy.ini` on Linux), unknown keys fall back: the screen mode, the fast-forward speed, the TAB BAR pick, the TWEAKS switches and the GUIDE notice. |
+| H-51 | The app's text in 7 languages | `companion/i18n/` | — | The core's ~80 labels are English. A generated table can keep them in step; the GUIDE's page text is the harder half. `M` for labels, `L` including the guide |
+| H-52 | `HELP`: the manual inside the app | `DocsScreen.kt` | — | The manual is Markdown and rendered by `website/src/lib/docs.js` and `DocsScreen.kt`; a C reader plus the files on the card. `M` |
+| H-53 | Screenshots from the player's side | `render.c`, app | ◐ | The host has `--screenshot FILE` for tests, no hotkey and no gallery. `S` |
+| H-54 | Launch from a frontend (ES-DE, iiSU, Cocoon) | `library.md` | ◐ | The PortMaster package and `deploy.sh` stop and restart EmulationStation; a plain cartridge-style entry would be cleaner. `S` |
+| H-55 | Update check and install | `AppUpdateFlow.kt` | n/a | PortMaster owns this. |
 
 ## Part 2: The companion frame and its tabs
 
-The core draws the app's FireRed OPTION look at 320x240 (`pd_ui.c`), and each
-host scales it (Linux to 640x480 over the game, 3DS 1:1 on the bottom screen).
-The rows below compare what is inside that frame.
+The core draws the app's FireRed OPTION look at 320x240 (`pd_ui.c`), and the
+host scales it to 640x480 over the game. The rows below compare what is inside
+that frame.
 
 ### The frame
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-01 | A fixed row of five chips plus the gear | `companion.md` | ✅ | ✅ | `BAR` in `pd_ui.c`; CARD opens from SETTINGS instead of a chip. |
-| C-02 | `MORE`: the hidden tabs as a grid | `companion.md` | — | — | Only needed once there are more tabs than the bar holds (C-03, C-ST-01, C-A-01). `S` |
-| C-03 | Choosing the five tabs (TAB BAR page) | `companion.md` | — | — | A settings page and a per-tab shown/hidden bit. `S` |
-| C-04 | A tab the game lacks gives its place to another | `companion.md` | ◐ | ◐ | DEX and GUIDE disappear when the game has no data for them, but nothing fills the gap. In a battle the app puts `BATTLE` first and the last tab gives up its place (V-03); the ports put `BATTLE` in the `DEX` slot instead. `S` |
-| C-05 | `PRESS START` empty state on the title screen | `companion.md` | ◐ | ◐ | Before the game is readable the tabs show zeros rather than the game's empty slots. `M` |
-| C-06 | `CLICK SOUND` on every tap | `companion.md` | — | — | Needs the game's own click sample; the core has no audio path at all. `M` |
-| C-07 | `TWEAKS`: moving icons, blinking cursor, tab animation, jump to battle | `companion.md` | ◐ | ◐ | The cursor blink and the jump to battle exist and are not switchable; the rest do not exist. `S` |
-| C-08 | `PLAYS AS` and best effort matching | `supported-games.md` | — | — | See S-08. `L` |
-| C-09 | The `NOT SUPPORTED` page with the reason | `supported-games.md` | ✅ | ✅ | The core sets `unsupported` in `pd_game_detect` and the UI draws a notice. |
-| C-10 | `ASK FOR SUPPORT` (file name and SHA-1, never the ROM) | `supported-games.md` | — | — | Needs a URL opener or a QR code per host. `S` |
-| C-11 | Companion as a window or a side panel | `devices.md` | ✅ | n/a | Linux draws it over the game, which is the window; the 3DS has its own screen. |
-| C-12 | `CLOSE COMPANION` and `OPEN COMPANION` | `companion.md` | ✅ | n/a | Closing the overlay is the same as hiding it on Linux. |
+| C-01 | A fixed row of five chips plus the gear | `companion.md` | ✅ | `layout()` and the bar in `pd_ui.c`: the game's tabs in the app's order (`PARTY`, `DEX`, `MAP`, `BAG`, `GUIDE`), and the TRAINER CARD once the player puts it on the bar in TAB BAR (off it, the card opens from SETTINGS' title window). |
+| C-02 | `MORE`: the hidden tabs as a grid | `companion.md` | ✅ | `pd_ui_more.c`: the tabs the bar has no room for, as labelled chips in two columns (the app's app-icon tiles need its icon art), the chip lit while one of them or the page is open, and BACK from one of them returning there. The TRAINER CARD is among them until it is picked for the bar. |
+| C-03 | Choosing the five tabs (TAB BAR page) | `companion.md` | ✅ | SETTINGS > TAB BAR (`pd_ui_settings.c`): `PARTY`, `DEX`, `MAP`, `BAG`, `GUIDE` and `CARD`, each `SHOWN` or `HIDDEN`, the title counting the picks this game has (`5/5`), a tab the game lacks saying `N/A` and keeping its pick, and the app's `TAB BAR IS FULL` notice when another chip won't fit. One `tabs=` bit each in the settings file, shared by every game. |
+| C-04 | A tab the game lacks gives its place to another | `companion.md` | ✅ | `layout()` in `pd_ui.c` draws the app's rule: `DEX` needs the ROM's dex tables, `GUIDE` its pages and `CARD` its art, the player's picks fill the bar first, then the game's other tabs take the places left over, and what doesn't fit opens from `MORE`. A battle puts `BATTLE` first and takes one of the places, so the last tab moves behind `MORE`. |
+| C-05 | `PRESS START` empty state on the title screen | `companion.md` | ◐ | Before the game is readable the tabs show zeros rather than the game's empty slots. `M` |
+| C-06 | `CLICK SOUND` on every tap | `companion.md` | — | Needs the game's own click sample; the core has no audio path at all. `M` |
+| C-07 | `TWEAKS`: moving icons, blinking cursor, tab animation, jump to battle | `companion.md` | ✅ | SETTINGS > TWEAKS (`pd_ui_settings.c`) keeps the app's four switches in `tweaks=` bits of the settings file, all on by default: `PARTY ICONS MOVE` bounces the icon of the party slot under the press at the game's HP-based speed, `MAP CURSOR BLINK` swaps the map cursor between its two sizes, `TAB ANIMATIONS` slides a tab in from its side (220 ms, a sixth of the screen) instead of cutting, and `JUMP TO BATTLE` decides whether a battle opens BATTLE by itself (the chip shows up either way). |
+| C-08 | `PLAYS AS` and best effort matching | `supported-games.md` | — | See S-08. `L` |
+| C-09 | The `NOT SUPPORTED` page with the reason | `supported-games.md` | ✅ | The core sets `unsupported` in `pd_game_detect` and the UI draws a notice. |
+| C-10 | `ASK FOR SUPPORT` (file name and SHA-1, never the ROM) | `supported-games.md` | — | Needs a URL opener or a QR code per host. `S` |
+| C-11 | Companion as a window or a side panel | `devices.md` | ✅ | It is drawn over the game, which is the window. |
+| C-12 | `CLOSE COMPANION` and `OPEN COMPANION` | `companion.md` | ✅ | Closing the overlay is the same as hiding it on Linux. |
 
 ### PARTY
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-P-01 | Six slots with the game's icon, name, gender, level, HP bar and status | `party.md` | ✅ | ✅ | `pd_ui_party.c`, icons from the ROM (`pd_icon.c`). |
-| C-P-02 | Fainted slots faded, status word on the slot | `party.md` | ✅ | ✅ | |
-| C-P-03 | Held item tag in the slot's corner | `party.md` | — | — | A thin bar over the top of the slot with the item's icon and name (V-20). The mon struct is already decoded; the bag's item name table is there too. `S` |
-| C-P-04 | Icons that bounce like the game's | `party.md` | — | — | The 3DS README lists the two-frame animation under next steps. `S` |
-| C-P-05 | Nickname as the game shows it | `party.md` | ✅ | ✅ | The name comes out of the mon struct. |
-| C-P-06 | A summary with the mon's moves, type and PP | `party.md` | ✅ | ✅ | Tap a slot. |
-| C-P-07 | Summary's EXP bar (`NEXT` / `MAX`) | `party.md` | — | — | EXP is in the struct; the curve per species is per-game data. `S` |
-| C-P-08 | `WEAK TO`, `RESISTS`, `IMMUNE TO` with multipliers | `party.md` | — | — | The type chart is generated (`pd_tables_gen.c`). `S` |
-| C-P-09 | `STATS`: IVs and EVs as bars, nature, Hidden Power | `party.md`, `MonStatsSection.kt` | — | — | Same 100 bytes, more decoding. Nature is a field in the struct. `M` |
-| C-P-10 | `LEARN`: next level-up moves and usable TMs, with verdicts and reasons | `party.md`, `MoveLearning.kt` | — | — | The biggest single party feature: learnsets, the advice rules and their short reason strings (`WEAK EFFECT`, `ITS MOVES ARE BETTER`, ...), which are copy of their own. `L` |
-| C-P-11 | Party strip at the bottom of the summary to switch quickly | `party.md` | — | — | The section stays open while stepping. `S` |
-| C-P-12 | `TAKE` a held item back into the bag | `party.md` | — | — | A write into the game, part of S-16. |
-| C-P-13 | The game's own slot art and per-hack palettes | `PartyPalette`, `PartySlotStylesGen.kt` | ◐ | ◐ | One FireRed palette; the app has a palette per supported hack. `M` |
+| C-P-01 | Six slots with the game's icon, name, gender, level, HP bar and status | `party.md` | ✅ | `pd_ui_party.c`, icons from the ROM (`pd_icon.c`). |
+| C-P-02 | Fainted slots faded, status word on the slot | `party.md` | ✅ |  |
+| C-P-03 | Held item tag in the slot's corner | `party.md` | — | A thin bar over the top of the slot with the item's icon and name (V-20). The mon struct is already decoded; the bag's item name table is there too. `S` |
+| C-P-04 | Icons that bounce like the game's | `party.md` | ◐ | The bounce is there (`icon_shift` in `pd_ui_party.c`, TWEAKS > PARTY ICONS MOVE): the icon of the slot under the press lifts 3 px and drops 1, at the game's HP-based speeds. Two things are narrower than the app: only the slot the port draws selected moves, where the app follows the game's own cursor, and the icon keeps its first ROM frame. `S` |
+| C-P-05 | Nickname as the game shows it | `party.md` | ✅ | The name comes out of the mon struct. |
+| C-P-06 | A summary with the mon's moves, type and PP | `party.md` | ✅ | Tap a slot. |
+| C-P-07 | Summary's EXP bar (`NEXT` / `MAX`) | `party.md` | — | EXP is in the struct; the curve per species is per-game data. `S` |
+| C-P-08 | `WEAK TO`, `RESISTS`, `IMMUNE TO` with multipliers | `party.md` | — | The type chart is generated (`pd_tables_gen.c`). `S` |
+| C-P-09 | `STATS`: IVs and EVs as bars, nature, Hidden Power | `party.md`, `MonStatsSection.kt` | — | Same 100 bytes, more decoding. Nature is a field in the struct. `M` |
+| C-P-10 | `LEARN`: next level-up moves and usable TMs, with verdicts and reasons | `party.md`, `MoveLearning.kt` | — | The biggest single party feature: learnsets, the advice rules and their short reason strings (`WEAK EFFECT`, `ITS MOVES ARE BETTER`, ...), which are copy of their own. `L` |
+| C-P-11 | Party strip at the bottom of the summary to switch quickly | `party.md` | — | The section stays open while stepping. `S` |
+| C-P-12 | `TAKE` a held item back into the bag | `party.md` | — | A write into the game, part of S-16. |
+| C-P-13 | The game's own slot art and per-hack palettes | `PartyPalette`, `PartySlotStylesGen.kt` | ◐ | One FireRed palette; the app has a palette per supported hack. `M` |
 
 ### BAG
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-B-01 | Pockets down the side, in the game's order, with the game's colours | `bag.md` | ◐ | ◐ | The app draws the game's bag with `PC` and the order button under the pockets (V-13). The ports step to one pocket in a white list instead. |
-| C-B-02 | Item names and counts as the game prints them | `bag.md` | ✅ | ✅ | Names are generated, the counts come from the save. |
-| C-B-03 | The tab's name follows the game (`PACK`, `CUBE`, `INVENTORY`, `POCKETS`) | `bag.md` | — | — | Only matters once hacks are read (S-06). |
-| C-B-04 | `ALL` pocket showing everything at once | `bag.md` | — | — | Always drawn, even with an empty bag; the other pockets only appear when they hold something (V-13). `S` |
-| C-B-05 | Sorting: game order, name, type, count | `bag.md` | — | — | All four confirmed: `DEFAULT`, `NAME`, `TYPE`, `COUNT` (V-13). `S` |
-| C-B-06 | Favorites (starred items, own `FAVORITES` pocket, per ROM) | `bag.md` | — | — | The star sits in the description bar and adds both the gold star in the list and a `FAVORITES` pocket (V-13). Needs a small per-ROM file next to the settings. `M` |
-| C-B-07 | TMs show the move they teach | `bag.md` | — | — | `S` |
-| C-B-08 | The tapped item's description | `bag.md` | ◐ | ◐ | `pd_item_desc.c` is frozen on purpose (see `AGENTS.md`). Upstream reads `gItems` (`RomItemText.kt`), so a hack's or another language's text is wrong here. `M` |
-| C-B-09 | `ABLE` / `NOT ABLE` / `LEARNED` / `BEST` for a TM | `bag.md`, `ItemPartyPicker.kt` | — | — | The app replaces the description's text with six party icons and a tag under each (V-14). `BEST` and the forget line did not show with three able, so they are conditional on the advice; open. Shares the learnset reader with C-P-10. `M` |
-| C-B-10 | The sort order keeps a scroll a drag can move | `bag.md` | ✅ | ✅ | A list a drag scrolls, per the ports' READMEs. |
-| C-B-11 | `USE` an item (and pick the Pokémon or move) | `bag.md` | — | — | The usable rows carry a ball mark and the list says `USE or GIVE it from here`; an HM shows neither (V-13). Writes into the game; per-game, S-16. `L` |
-| C-B-12 | `GIVE` an item to a Pokémon | `bag.md` | — | — | Same as C-B-11. |
-| C-B-13 | `PC` from anywhere | `bag.md`, `Pc.kt` | — | — | Confirmed: the game's own PC opens over the field and the companion stays up (V-18). The app calls the game's PC special. Per-game addresses and a field check. `L` |
-| C-B-14 | `REUSABLE TMS` | `bag.md`, `ReusableTms.kt` | — | — | A ROM patch per game; the app has a table of sites. `L` |
+| C-B-01 | Pockets down the side, in the game's order, with the game's colours | `bag.md` | ◐ | The app draws the game's bag with `PC` and the order button under the pockets (V-13). The port steps to one pocket in a white list instead. |
+| C-B-02 | Item names and counts as the game prints them | `bag.md` | ✅ | Names are generated, the counts come from the save. |
+| C-B-03 | The tab's name follows the game (`PACK`, `CUBE`, `INVENTORY`, `POCKETS`) | `bag.md` | — | Only matters once hacks are read (S-06). |
+| C-B-04 | `ALL` pocket showing everything at once | `bag.md` | — | Always drawn, even with an empty bag; the other pockets only appear when they hold something (V-13). `S` |
+| C-B-05 | Sorting: game order, name, type, count | `bag.md` | — | All four confirmed: `DEFAULT`, `NAME`, `TYPE`, `COUNT` (V-13). `S` |
+| C-B-06 | Favorites (starred items, own `FAVORITES` pocket, per ROM) | `bag.md` | — | The star sits in the description bar and adds both the gold star in the list and a `FAVORITES` pocket (V-13). Needs a small per-ROM file next to the settings. `M` |
+| C-B-07 | TMs show the move they teach | `bag.md` | — | `S` |
+| C-B-08 | The tapped item's description | `bag.md` | ◐ | `pd_item_desc.c` is frozen on purpose (see `AGENTS.md`). Upstream reads `gItems` (`RomItemText.kt`), so a hack's or another language's text is wrong here. `M` |
+| C-B-09 | `ABLE` / `NOT ABLE` / `LEARNED` / `BEST` for a TM | `bag.md`, `ItemPartyPicker.kt` | — | The app replaces the description's text with six party icons and a tag under each (V-14). `BEST` and the forget line did not show with three able, so they are conditional on the advice; open. Shares the learnset reader with C-P-10. `M` |
+| C-B-10 | The sort order keeps a scroll a drag can move | `bag.md` | ✅ | A list a drag scrolls, per the README. |
+| C-B-11 | `USE` an item (and pick the Pokémon or move) | `bag.md` | — | The usable rows carry a ball mark and the list says `USE or GIVE it from here`; an HM shows neither (V-13). Writes into the game; per-game, S-16. `L` |
+| C-B-12 | `GIVE` an item to a Pokémon | `bag.md` | — | Same as C-B-11. |
+| C-B-13 | `PC` from anywhere | `bag.md`, `Pc.kt` | — | Confirmed: the game's own PC opens over the field and the companion stays up (V-18). The app calls the game's PC special. Per-game addresses and a field check. `L` |
+| C-B-14 | `REUSABLE TMS` | `bag.md`, `ReusableTms.kt` | — | A ROM patch per game; the app has a table of sites. `L` |
 
 ### MAP
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-M-01 | The game's own region map, rebuilt from the ROM | `map.md`, `RomArt.kt` | ✅ | ✅ | `pd_map.c` plus `pd_romart.c`; nothing bundled. |
-| C-M-02 | The player's head on the right tile, place name in the game's label | `map.md` | ✅ | ✅ | The label style follows the game (FireRed strip, Emerald window). |
-| C-M-03 | The game's blinking cursor | `map.md` | ✅ | ✅ | Always on, see C-07. |
-| C-M-04 | Tap a spot to name it, `ME` to come back | `map.md` | ✅ | ✅ | The D-pad cursor does the tap; `ME` appears once panned. |
-| C-M-05 | `PLACES`: towns, routes, other places, your location | `map.md` | ✅ | ✅ | Grouped and sorted as the app's `RegionMapModel`. The app adds the map page on the right of each row (V-19), which the ports do not. |
-| C-M-06 | Several map pages (Kanto / Sevii, numbered maps) | `map.md` | ✅ | ✅ | A region button next to PLACES. |
-| C-M-07 | Text instead of a picture when the game has no map art | `map.md` | ◐ | ◐ | Worth a check on a hack once hacks are read; untested today. `S` |
-| C-M-08 | `FLY` to a town | `map.md`, `Fly.*` | — | — | Writes into the game; the party's move has to be read and the game's own animation started. `L` |
+| C-M-01 | The game's own region map, rebuilt from the ROM | `map.md`, `RomArt.kt` | ✅ | `pd_map.c` plus `pd_romart.c`; nothing bundled. |
+| C-M-02 | The player's head on the right tile, place name in the game's label | `map.md` | ✅ | The label style follows the game (FireRed strip, Emerald window). |
+| C-M-03 | The game's blinking cursor | `map.md` | ✅ | See C-07: MAP CURSOR BLINK in TWEAKS, on by default. |
+| C-M-04 | Tap a spot to name it, `ME` to come back | `map.md` | ✅ | The D-pad cursor does the tap; `ME` appears once panned. |
+| C-M-05 | `PLACES`: towns, routes, other places, your location | `map.md` | ✅ | Grouped and sorted as the app's `RegionMapModel`. The app adds the map page on the right of each row (V-19), which the port does not. |
+| C-M-06 | Several map pages (Kanto / Sevii, numbered maps) | `map.md` | ✅ | A region button next to PLACES. |
+| C-M-07 | Text instead of a picture when the game has no map art | `map.md` | ◐ | Worth a check on a hack once hacks are read; untested today. `S` |
+| C-M-08 | `FLY` to a town | `map.md`, `Fly.*` | — | Writes into the game; the party's move has to be read and the game's own animation started. `L` |
 
 ### DEX
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-D-01 | The list with seen and owned counts and a caught mark per row | `dex.md` | ✅ | ✅ | `pd_ui_dex.c`; all entries open, seen or not. |
-| C-D-02 | Regional / National flip, starting on the save's own | `dex.md` | ✅ | ✅ | A tap on the region name. |
-| C-D-03 | Filters: `ALL`, `CAUGHT`, `SEEN ONLY`, `NOT SEEN` | `dex.md` | — | — | The seen and owned flags are already read. `S` |
-| C-D-04 | Entry: number, name, picture, footprint, category, types, height and weight, dex text | `dex.md` | ◐ | ◐ | Text as the ROM has it, images LZ77; the ports draw no footprint. |
-| C-D-05 | Base stats with `TOTAL` and the `ABILITY` | `dex.md` | ✅ | ✅ | `gBaseStats` and the ability name table. |
-| C-D-06 | `HIDDEN` ability | `dex.md` | — | — | Gen 3 retail has none, so this follows S-07 (hacks) and not the retail readers. |
-| C-D-07 | Footprint, `EGG GROUP`, gender ratio, `CATCH RATE` | `dex.md` | — | — | All in `gBaseStats`; the egg group table is not generated yet. The gender row shows both symbols with a percentage each (V-10). `M` |
-| C-D-08 | `EVOLVE`: the family both ways with how each step happens | `dex.md`, `DexDetails.kt` | ✅ | ✅ | FireRed rev 1 and Emerald; LeafGreen has no table in the port's config. The app writes the condition as `LU n`, the port as `LV n`, so align the label. |
-| C-D-09 | `AREA`: wild places by method with odds, plus gifts and trades | `dex.md` | — | — | The wild tables are read for HERE already, so this is a second view. `M` |
-| C-D-10 | `MOVES`: level-up list plus TMs and HMs | `dex.md` | — | — | `LEVEL UP` with level, name and type chip, then `TM / TUTOR` or `NONE` (V-11). Learnsets are in the config (`gLevelUpLearnsets`); the TM half needs `tmhmLearnsets`. `M` |
-| C-D-11 | Previous and next arrows with a counter | `dex.md` | — | — | `S` |
-| C-D-12 | The open section stays open while stepping through entries | `dex.md` | ✅ | ✅ | The EVOLVE section survives a step. |
+| C-D-01 | The list with seen and owned counts and a caught mark per row | `dex.md` | ✅ | `pd_ui_dex.c`; all entries open, seen or not. |
+| C-D-02 | Regional / National flip, starting on the save's own | `dex.md` | ✅ | A tap on the region name. |
+| C-D-03 | Filters: `ALL`, `CAUGHT`, `SEEN ONLY`, `NOT SEEN` | `dex.md` | — | The seen and owned flags are already read. `S` |
+| C-D-04 | Entry: number, name, picture, footprint, category, types, height and weight, dex text | `dex.md` | ◐ | Text as the ROM has it, images LZ77; the port draws no footprint. |
+| C-D-05 | Base stats with `TOTAL` and the `ABILITY` | `dex.md` | ✅ | `gBaseStats` and the ability name table. |
+| C-D-06 | `HIDDEN` ability | `dex.md` | — | Gen 3 retail has none, so this follows S-07 (hacks) and not the retail readers. |
+| C-D-07 | Footprint, `EGG GROUP`, gender ratio, `CATCH RATE` | `dex.md` | — | All in `gBaseStats`; the egg group table is not generated yet. The gender row shows both symbols with a percentage each (V-10). `M` |
+| C-D-08 | `EVOLVE`: the family both ways with how each step happens | `dex.md`, `DexDetails.kt` | ✅ | FireRed rev 1 and Emerald; LeafGreen has no table in the port's config. The app writes the condition as `LU n`, the port as `LV n`, so align the label. |
+| C-D-09 | `AREA`: wild places by method with odds, plus gifts and trades | `dex.md` | — | The wild tables are read for HERE already, so this is a second view. `M` |
+| C-D-10 | `MOVES`: level-up list plus TMs and HMs | `dex.md` | — | `LEVEL UP` with level, name and type chip, then `TM / TUTOR` or `NONE` (V-11). Learnsets are in the config (`gLevelUpLearnsets`); the TM half needs `tmhmLearnsets`. `M` |
+| C-D-11 | Previous and next arrows with a counter | `dex.md` | — | `S` |
+| C-D-12 | The open section stays open while stepping through entries | `dex.md` | ✅ | The EVOLVE section survives a step. |
 
 ### GUIDE
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-G-01 | Hint first, then the answer, one entry open at a time | `guide.md` | ✅ | ✅ | `pd_ui_guide.c`, the `HINT` / `ANSWER` tag at the row's end. |
-| C-G-02 | The page and the scroll position are kept when switching tabs | `guide.md` | ◐ | ◐ | The scroll is kept per tab; whether the page is too, after a battle jump, is unchecked. `S` |
-| C-G-03 | `HERE`: hand-written to-dos for the area | `guide.md` | ✅ | ✅ | Generated pages from the app's guide DSL. |
-| C-G-04 | `HERE`: wild Pokémon per method, levels and odds, `???` until tapped | `guide.md` | ✅ | ✅ | Read from `gWildMonHeaders`. |
-| C-G-05 | `HERE`: `PEOPLE` (gifts, eggs, trades) | `guide.md` | ✅ | ✅ | |
-| C-G-06 | `HERE`: `ITEMS`, hidden ones behind a hint, a ball when done | `guide.md` | ✅ | ✅ | The ball marks come from the save's flags. |
-| C-G-07 | `BOSS`: the next unbeaten gym, Elite Four or champion with the team | `guide.md` | ◐ | ◐ | The app opens on the next boss and lists the following ones below as headers (V-16); the ports show the next one only. `pd_guide.c` checks it against the save's badges. |
-| C-G-08 | `ALL DONE` when every boss is beaten | `guide.md` | ✅ | ✅ | Drawn as `ALL BEATEN`. |
-| C-G-09 | Several teams per boss (difficulty, rematch) | `guide.md` | — | — | Only the retail games' single teams are generated. `M` |
-| C-G-10 | The `EVOLUTIONS` page | `guide.md` | — | — | Shares C-D-08; the party comes first. `S` |
-| C-G-11 | Day and night variants (Lazarus, Polished Crystal) | `guide.md` | — | — | Both are Game Boy or hack only, so it follows S-02 and S-06. |
-| C-G-12 | A `WHERE IS` built from the maps for hacks | `guide.md` | — | — | Follows S-06. |
-| C-G-13 | The first-open `BEFORE YOU READ` notice, once per game | `guide.md` | ✅ | ✅ | `guideNotice` in the settings, a bit per game kind. |
-| C-G-14 | The guide's text in the game's language | `guide.md`, `companion/i18n/guide` | ◐ | ◐ | The English DSL only (`gen_guide.py`). `L` per language |
+| C-G-01 | Hint first, then the answer, one entry open at a time | `guide.md` | ✅ | `pd_ui_guide.c`, the `HINT` / `ANSWER` tag at the row's end. |
+| C-G-02 | The page and the scroll position are kept when switching tabs | `guide.md` | ◐ | The scroll is kept per tab; whether the page is too, after a battle jump, is unchecked. `S` |
+| C-G-03 | `HERE`: hand-written to-dos for the area | `guide.md` | ✅ | Generated pages from the app's guide DSL. |
+| C-G-04 | `HERE`: wild Pokémon per method, levels and odds, `???` until tapped | `guide.md` | ✅ | Read from `gWildMonHeaders`. |
+| C-G-05 | `HERE`: `PEOPLE` (gifts, eggs, trades) | `guide.md` | ✅ |  |
+| C-G-06 | `HERE`: `ITEMS`, hidden ones behind a hint, a ball when done | `guide.md` | ✅ | The ball marks come from the save's flags. |
+| C-G-07 | `BOSS`: the next unbeaten gym, Elite Four or champion with the team | `guide.md` | ◐ | The app opens on the next boss and lists the following ones below as headers (V-16); the port shows the next one only. `pd_guide.c` checks it against the save's badges. |
+| C-G-08 | `ALL DONE` when every boss is beaten | `guide.md` | ✅ | Drawn as `ALL BEATEN`. |
+| C-G-09 | Several teams per boss (difficulty, rematch) | `guide.md` | — | Only the retail games' single teams are generated. `M` |
+| C-G-10 | The `EVOLUTIONS` page | `guide.md` | — | Shares C-D-08; the party comes first. `S` |
+| C-G-11 | Day and night variants (Lazarus, Polished Crystal) | `guide.md` | — | Both are Game Boy or hack only, so it follows S-02 and S-06. |
+| C-G-12 | A `WHERE IS` built from the maps for hacks | `guide.md` | — | Follows S-06. |
+| C-G-13 | The first-open `BEFORE YOU READ` notice, once per game | `guide.md` | ✅ | `guideNotice` in the settings, a bit per game kind. |
+| C-G-14 | The guide's text in the game's language | `guide.md`, `companion/i18n/guide` | ◐ | The English DSL only (`gen_guide.py`). `L` per language |
 
 ### BATTLE
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-BT-01 | Opens by itself in a battle and gives the tab back afterwards | `battle.md` | ✅ | ✅ | `pd_ui_update` follows the snapshot. |
-| C-BT-02 | `INFO`: both sides with the game's icons, your four moves with verdicts | `battle.md` | ✅ | ✅ | `SUPER 2x`, `NEUTRAL 1x`, `RESISTED 1/2x`, `IMMUNE 0x`, `STATUS`, `NO PP`. |
-| C-BT-03 | `INFO`: the foe's weaknesses, and a tag on each side for the other side's threat | `battle.md` | — | — | The foe's `WEAK TO` / `RESISTS` plus the per-side tag (checked in V-16). `S` |
-| C-BT-04 | `INFO`: the foe's ability, held item, stats with boosts and moves | `battle.md` | — | — | The battle struct has the fields; decoding them is the work. `M` |
-| C-BT-05 | `SUGGESTIONS`: the three best picks with their best move | `battle.md` | ✅ | ✅ | The app's ranking. |
-| C-BT-06 | `FOE TEAM`: the trainer's party in order, balls, fainted faded | `battle.md` | ✅ | ✅ | `gEnemyParty` plus `gBattlerPartyIndexes`. |
-| C-BT-07 | Tapping a foe re-ranks INFO and SUGGESTIONS against it | `battle.md` | ✅ | ✅ | `NEXT` / `FAINTED` / `RESERVE` / `UNSEEN`. |
-| C-BT-08 | `BATTLE HINTS` off (facts stay, verdicts go) | `battle.md` | — | — | One setting that suppresses the verdict text. `S` |
-| C-BT-09 | `ONE-TAP MOVES` | `battle.md` | — | — | Needs C-BT-11 first. `S` afterwards |
-| C-BT-10 | `FOE IVS`: a STATS page for the foe | `battle.md` | — | — | Shares C-P-09's decoding. `S` |
-| C-BT-11 | `FIGHT` / `BAG` / `RUN` / `POKéMON` buttons on your turn | `battle.md`, `BattleInputController` | — | — | Presses the game's own buttons at the right moment; needs the battle menu's state per game. `L` |
-| C-BT-12 | The `POKéMON` switch pane with `BEST` and `OUT` | `battle.md` | — | — | Works the game's party menu for you. `L` |
-| C-BT-13 | One-press picks (tapping a move uses it) | `battle.md`, `ROM_FEATURES.md` | — | — | Per game cursor addresses (`gActionSelectionCursor`); the app lists which games have it. `L` |
+| C-BT-01 | Opens by itself in a battle and gives the tab back afterwards | `battle.md` | ✅ | `pd_ui_update` follows the snapshot. |
+| C-BT-02 | `INFO`: both sides with the game's icons, your four moves with verdicts | `battle.md` | ✅ | `SUPER 2x`, `NEUTRAL 1x`, `RESISTED 1/2x`, `IMMUNE 0x`, `STATUS`, `NO PP`. |
+| C-BT-03 | `INFO`: the foe's weaknesses, and a tag on each side for the other side's threat | `battle.md` | — | The foe's `WEAK TO` / `RESISTS` plus the per-side tag (checked in V-16). `S` |
+| C-BT-04 | `INFO`: the foe's ability, held item, stats with boosts and moves | `battle.md` | — | The battle struct has the fields; decoding them is the work. `M` |
+| C-BT-05 | `SUGGESTIONS`: the three best picks with their best move | `battle.md` | ✅ | The app's ranking. |
+| C-BT-06 | `FOE TEAM`: the trainer's party in order, balls, fainted faded | `battle.md` | ✅ | `gEnemyParty` plus `gBattlerPartyIndexes`. |
+| C-BT-07 | Tapping a foe re-ranks INFO and SUGGESTIONS against it | `battle.md` | ✅ | `NEXT` / `FAINTED` / `RESERVE` / `UNSEEN`. |
+| C-BT-08 | `BATTLE HINTS` off (facts stay, verdicts go) | `battle.md` | — | One setting that suppresses the verdict text. `S` |
+| C-BT-09 | `ONE-TAP MOVES` | `battle.md` | — | Needs C-BT-11 first. `S` afterwards |
+| C-BT-10 | `FOE IVS`: a STATS page for the foe | `battle.md` | — | Shares C-P-09's decoding. `S` |
+| C-BT-11 | `FIGHT` / `BAG` / `RUN` / `POKéMON` buttons on your turn | `battle.md`, `BattleInputController` | — | Presses the game's own buttons at the right moment; needs the battle menu's state per game. `L` |
+| C-BT-12 | The `POKéMON` switch pane with `BEST` and `OUT` | `battle.md` | — | Works the game's party menu for you. `L` |
+| C-BT-13 | One-press picks (tapping a move uses it) | `battle.md`, `ROM_FEATURES.md` | — | Per game cursor addresses (`gActionSelectionCursor`); the app lists which games have it. `L` |
 
 ### TRAINER CARD, STATES, ACHIEVEMENTS, SETTINGS
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-C-01 | The card's front: name, ID, money, dex count, play time, badges | `trainer-card.md` | ✅ | ✅ | `pd_card.c` and `pd_ui_card.c`; pixel checks pinned by `TrainerCardTest`. |
-| C-C-02 | Tap to flip to the back and back again | `trainer-card.md` | ✅ | ✅ | The app's fold animation. |
-| C-C-03 | Cards for the app's ten games (Unbound, Glazed, SoulGold, Lazarus, ...) | `trainer-card.md` | ◐ | ◐ | FireRed and Emerald only; the card style is `PD_CARD_*`. `M` per hack |
-| C-C-04 | Card colour by stars, the clock's colon blinking | `trainer-card.md` | ✅ | ✅ | From `gameStats`. |
-| C-C-05 | The largest whole size that fits | `trainer-card.md` | ✅ | ✅ | 2x on the 640x480 overlay, 1:1 on the 3DS. |
-| C-ST-01 | `STATES`: ten slots, `SLOT 0` to `SLOT 9` | `saves.md`, `StatesScreen.kt` | — | — | Host side, see H-18. |
-| C-ST-02 | A screenshot and a date under each slot | `saves.md` | — | — | Same as H-18. |
-| C-ST-03 | `UNDO SAVE` and `UNDO LOAD` | `saves.md` | — | — | Same as H-19. |
-| C-ST-04 | The current slot in the title, the slot hotkeys act on | `saves.md` | — | — | Same as H-20. |
-| C-A-01 | RetroAchievements: sign in and play softcore | `achievements.md`, rcheevos | — | — | A new dependency (`rcheevos`), an HTTPS client and storage per host. `XL` |
-| C-A-02 | The `CHEEVOS` tab with badges, descriptions and progress bars | `achievements.md` | — | — | Follows C-A-01. `M` |
-| C-A-03 | Filter `SHOW ALL` / `LOCKED` / `UNLOCKED` | `achievements.md` | — | — | Follows C-A-02. `S` |
-| C-A-04 | Unlock and progress popups over any tab, tap to open the entry | `achievements.md` | — | — | Follows C-A-02. `M` |
-| C-A-05 | Leaderboards and challenge badges | `achievements.md` | — | — | Follows C-A-02. `M` |
-| C-A-06 | Cheats pause achievements | `achievements.md` | — | — | Follows C-A-01 and Part 4's cheats. |
-| C-A-07 | Achievement progress travels in the save state | `achievements.md` | — | — | A section in the state file; follows C-A-01. `M` |
-| C-SET-01 | SETTINGS split into groups, with pages behind rows | `settings-reference.md` | — | — | Today one column of four rows. `M` |
-| C-SET-02 | A search box on the settings (top screen only) | `settings-reference.md` | — | — | Only worth it after C-SET-01. `S` |
-| C-SET-03 | Every row in the reference | `settings-reference.md` | ◐ | ◐ | Screen, fast-forward, states and leave game exist; Part 1 and this part list the rest. |
-| C-SET-04 | `CLOSE GAME`, `RESTART GAME` and the resume warning | `companion.md` | ◐ | ◐ | `LEAVE GAME` exists; restart and the resume wording do not. `S` |
+| C-C-01 | The card's front: name, ID, money, dex count, play time, badges | `trainer-card.md` | ✅ | `pd_card.c` and `pd_ui_card.c`; pixel checks pinned by `TrainerCardTest`. |
+| C-C-02 | Tap to flip to the back and back again | `trainer-card.md` | ✅ | The app's fold animation. |
+| C-C-03 | Cards for the app's ten games (Unbound, Glazed, SoulGold, Lazarus, ...) | `trainer-card.md` | ◐ | FireRed and Emerald only; the card style is `PD_CARD_*`. `M` per hack |
+| C-C-04 | Card colour by stars, the clock's colon blinking | `trainer-card.md` | ✅ | From `gameStats`. |
+| C-C-05 | The largest whole size that fits | `trainer-card.md` | ✅ | 2x on the 640x480 overlay. |
+| C-ST-01 | `STATES`: ten slots, `SLOT 0` to `SLOT 9` | `saves.md`, `StatesScreen.kt` | — | Host side, see H-18. |
+| C-ST-02 | A screenshot and a date under each slot | `saves.md` | — | Same as H-18. |
+| C-ST-03 | `UNDO SAVE` and `UNDO LOAD` | `saves.md` | — | Same as H-19. |
+| C-ST-04 | The current slot in the title, the slot hotkeys act on | `saves.md` | — | Same as H-20. |
+| C-A-01 | RetroAchievements: sign in and play softcore | `achievements.md`, rcheevos | — | A new dependency (`rcheevos`), an HTTPS client and storage per host. `XL` |
+| C-A-02 | The `CHEEVOS` tab with badges, descriptions and progress bars | `achievements.md` | — | Follows C-A-01. `M` |
+| C-A-03 | Filter `SHOW ALL` / `LOCKED` / `UNLOCKED` | `achievements.md` | — | Follows C-A-02. `S` |
+| C-A-04 | Unlock and progress popups over any tab, tap to open the entry | `achievements.md` | — | Follows C-A-02. `M` |
+| C-A-05 | Leaderboards and challenge badges | `achievements.md` | — | Follows C-A-02. `M` |
+| C-A-06 | Cheats pause achievements | `achievements.md` | — | Follows C-A-01 and Part 4's cheats. |
+| C-A-07 | Achievement progress travels in the save state | `achievements.md` | — | A section in the state file; follows C-A-01. `M` |
+| C-SET-01 | SETTINGS split into groups, with pages behind rows | `settings-reference.md` | — | Today one column of four rows. `M` |
+| C-SET-02 | A search box on the settings (top screen only) | `settings-reference.md` | — | Only worth it after C-SET-01. `S` |
+| C-SET-03 | Every row in the reference | `settings-reference.md` | ◐ | Screen, fast-forward, states and leave game exist; Part 1 and this part list the rest. |
+| C-SET-04 | `CLOSE GAME`, `RESTART GAME` and the resume warning | `companion.md` | ◐ | `LEAVE GAME` exists; restart and the resume wording do not. `S` |
 
 ## Part 3: Features over the game: HUD, quick menu, battle buttons, makeover
 
@@ -307,71 +321,76 @@ reads, so the hard part is drawing per frame, not knowing the game.
 
 ### HUD
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| P-HUD-01 | Party strip (icons, level, HP, status) on the game screen, tap for the summary | `hud.md` | — | — | The snapshot has everything; it is a second, smaller drawing path over the game. `M` |
-| P-HUD-02 | Minimap with the head and the place name, tap for the whole map | `hud.md` | — | — | `pd_map` can draw a smaller copy. `M` |
-| P-HUD-03 | Poké Balls with counts, tap for that pocket | `hud.md` | — | — | `S` |
-| P-HUD-04 | Steps left while a repel works, with a draining bar | `hud.md` | — | — | Needs the game's step counter per game. `M` |
-| P-HUD-05 | `PC` button | `hud.md` | — | — | Follows C-B-13. |
-| P-HUD-06 | `BAG` button and a compact bag, with `USE` | `hud.md` | — | — | Follows C-B-11. |
-| P-HUD-07 | `WILD`: this area's encounters with caught marks and a count | `hud.md` | — | — | HERE's wild tables, drawn small. `M` |
-| P-HUD-08 | Steps aside for battles, menus, the town map | `hud.md` | — | — | The snapshot already knows a battle; menus are the hard part. `M` |
-| P-HUD-09 | `LAYOUT` (CORNERS, CORNERS 2, RAILS, DOCK), `LOOK`, `SIZE`, per-part switches | `hud.md`, `FieldHudSettings.kt` | — | — | Four layouts times seven parts is a lot of drawing for a small feature; the app also has a compact fallback for narrow screens. Start with `CORNERS` and all parts. `L` |
+| P-HUD-01 | Party strip (icons, level, HP, status) on the game screen, tap for the summary | `hud.md` | — | The snapshot has everything; it is a second, smaller drawing path over the game. `M` |
+| P-HUD-02 | Minimap with the head and the place name, tap for the whole map | `hud.md` | — | `pd_map` can draw a smaller copy. `M` |
+| P-HUD-03 | Poké Balls with counts, tap for that pocket | `hud.md` | — | `S` |
+| P-HUD-04 | Steps left while a repel works, with a draining bar | `hud.md` | — | Needs the game's step counter per game. `M` |
+| P-HUD-05 | `PC` button | `hud.md` | — | Follows C-B-13. |
+| P-HUD-06 | `BAG` button and a compact bag, with `USE` | `hud.md` | — | Follows C-B-11. |
+| P-HUD-07 | `WILD`: this area's encounters with caught marks and a count | `hud.md` | — | HERE's wild tables, drawn small. `M` |
+| P-HUD-08 | Steps aside for battles, menus, the town map | `hud.md` | — | The snapshot already knows a battle; menus are the hard part. `M` |
+| P-HUD-09 | `LAYOUT` (CORNERS, CORNERS 2, RAILS, DOCK), `LOOK`, `SIZE`, per-part switches | `hud.md`, `FieldHudSettings.kt` | — | Four layouts times seven parts is a lot of drawing for a small feature; the app also has a compact fallback for narrow screens. Start with `CORNERS` and all parts. `L` |
 
 ### Quick menu
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| P-QM-01 | One hotkey opens it, ring or grid, labels on or off | `controls.md` | — | — | Seen as a labelled grid of tiles with an orange frame on the selected one (V-21). A second overlay with its own cursor. `M` |
-| P-QM-02 | `PC` | `controls.md` | — | — | Follows C-B-13. |
-| P-QM-03 | `FLY` | `controls.md` | — | — | Follows C-M-08. |
-| P-QM-04 | The keep-away spray, with the steps each kind lasts | `controls.md` | — | — | A bag `USE` on the repel items, so it follows C-B-11. |
-| P-QM-05 | `BIKE` / `GET OFF` | `controls.md` | — | — | Uses the registered item, per game. `M` |
-| P-QM-06 | `ROD` | `controls.md` | — | — | Same as BIKE. `S` |
-| P-QM-07 | `WILD`: encounters off and on | `controls.md` | — | — | A ROM patch, per game (S-16). |
-| P-QM-08 | `SAVE STATE`, `LOAD STATE`, `FF`, `COMPANION` in the menu | `controls.md` | — | — | These four already exist as buttons elsewhere; putting them in the menu is the cheap half. `S` |
-| P-QM-09 | An action that cannot run is greyed out with the reason | `controls.md` | — | — | Worth copying, it is what makes the menu feel safe. `S` |
+| P-QM-01 | One hotkey opens it, ring or grid, labels on or off | `controls.md` | — | Seen as a labelled grid of tiles with an orange frame on the selected one (V-21). A second overlay with its own cursor. `M` |
+| P-QM-02 | `PC` | `controls.md` | — | Follows C-B-13. |
+| P-QM-03 | `FLY` | `controls.md` | — | Follows C-M-08. |
+| P-QM-04 | The keep-away spray, with the steps each kind lasts | `controls.md` | — | A bag `USE` on the repel items, so it follows C-B-11. |
+| P-QM-05 | `BIKE` / `GET OFF` | `controls.md` | — | Uses the registered item, per game. `M` |
+| P-QM-06 | `ROD` | `controls.md` | — | Same as BIKE. `S` |
+| P-QM-07 | `WILD`: encounters off and on | `controls.md` | — | A ROM patch, per game (S-16). |
+| P-QM-08 | `SAVE STATE`, `LOAD STATE`, `FF`, `COMPANION` in the menu | `controls.md` | — | These four already exist as buttons elsewhere; putting them in the menu is the cheap half. `S` |
+| P-QM-09 | An action that cannot run is greyed out with the reason | `controls.md` | — | Worth copying, it is what makes the menu feel safe. `S` |
 
 ### Battle buttons
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| P-BB-01 | `FIGHT`, `POKéMON`, `RUN` beside the battle, `RUN` greyed in a trainer battle | `battle.md` | — | — | On the R36S these would be pad buttons, not drawn ones, since the screen has no touch. `L` |
-| P-BB-02 | `FIGHT` opens the move list with `PP`, type, power and the verdict | `battle.md` | — | — | Shares C-BT-11. |
-| P-BB-03 | `POKéMON` opens the party list with `BEST` and `OUT` | `battle.md` | — | — | Shares C-BT-12. |
-| P-BB-04 | They slide in and out and keep out of the game's own bag and party screens | `battle.md` | — | — | Polish on top of P-BB-01. `M` |
+| P-BB-01 | `FIGHT`, `POKéMON`, `RUN` beside the battle, `RUN` greyed in a trainer battle | `battle.md` | — | On the R36S these would be pad buttons, not drawn ones, since the screen has no touch. `L` |
+| P-BB-02 | `FIGHT` opens the move list with `PP`, type, power and the verdict | `battle.md` | — | Shares C-BT-11. |
+| P-BB-03 | `POKéMON` opens the party list with `BEST` and `OUT` | `battle.md` | — | Shares C-BT-12. |
+| P-BB-04 | They slide in and out and keep out of the game's own bag and party screens | `battle.md` | — | Polish on top of P-BB-01. `M` |
 
 ### Makeover (drawn over the game, the save untouched)
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| C-MK-01 | `PLAYER LOOK`: wear another hero, or a party Pokémon that follows you | `companion.md`, `PlayerLook.kt`, `PlayerLookSigsGen.kt` | — | — | Sprites come from the player's own other ROM, found by fingerprint; the map head, battle back, card and map all follow. `XL` |
-| C-MK-02 | `RIVAL LOOK`: the rival wears the other hero | `companion.md` | — | — | Ruby, Sapphire and Emerald only, and it depends on C-MK-01. `M` |
-| C-MK-03 | `TEXT LOOK`: the other game's text boxes and letters | `companion.md` | — | — | Font and box art per game and language. `L` |
-| C-MK-04 | `FOLLOWER`: the first party Pokémon walks behind you | `companion.md` | — | — | Drawn by the app over the map, with turn, run, bike and surf poses. `L` |
-| C-MK-05 | `DAY AND NIGHT`: dawn, dusk and night tints on the outdoors | `companion.md` | — | — | A colour transform per frame while walking; the cheapest of the five to try on the RK3326. `M` |
+| C-MK-01 | `PLAYER LOOK`: wear another hero, or a party Pokémon that follows you | `companion.md`, `PlayerLook.kt`, `PlayerLookSigsGen.kt` | — | Sprites come from the player's own other ROM, found by fingerprint; the map head, battle back, card and map all follow. `XL` |
+| C-MK-02 | `RIVAL LOOK`: the rival wears the other hero | `companion.md` | — | Ruby, Sapphire and Emerald only, and it depends on C-MK-01. `M` |
+| C-MK-03 | `TEXT LOOK`: the other game's text boxes and letters | `companion.md` | — | Font and box art per game and language. `L` |
+| C-MK-04 | `FOLLOWER`: the first party Pokémon walks behind you | `companion.md` | — | Drawn by the app over the map, with turn, run, bike and surf poses. `L` |
+| C-MK-05 | `DAY AND NIGHT`: dawn, dusk and night tints on the outdoors | `companion.md` | — | A colour transform per frame while walking; the cheapest of the five to try on the RK3326. `M` |
 
 ## Part 4: Library, save editor, cheats, other surfaces
 
 ### Library
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| L-01 | A list of games, D-pad or keyboard, A starts one | `library.md` | ✅ | ✅ | `menu.c` and the 3DS's own list, names only. |
-| L-02 | A grid with covers | `library.md` | — | — | Covers need a source and a cache. `M` |
-| L-03 | Quick views (`ALL`, `FAVORITES`, `RECENT`, `GB`, `GBC`, `GBA`, `DS`, `HACKS`) | `library.md` | — | — | `S` once there is more than one console to show |
-| L-04 | Sorting (name, recent, console, ...) and favorites | `library.md` | ◐ | ◐ | Alphabetical only, read from the folder each start. `S` |
-| L-05 | Rescan the ROMs folder and say what changed | `library.md` | ✅ | ✅ | Reading the folder at start is the rescan. |
-| L-06 | Import a file with `+` | `library.md` | n/a | n/a | Both hosts read a real folder, so there is nothing to import. |
-| L-07 | Rename and hide a game | `library.md` | — | — | Would need a per-ROM side file; hiding a file in a shared folder is rarely wanted. `S` |
-| L-08 | Cover art from SteamGridDB, RetroAchievements or a picked image | `library.md` | — | — | A network client and a key on the handheld; low value for a 3-entry list. `L` |
-| L-09 | Dual-screen launcher (cover, last played, legend, X swaps) | `library.md` | n/a | n/a | The 3DS boots into the game list by design. |
-| L-10 | The game's `INFO` page (ROM, save, states, achievements) | `library.md` | — | — | Most of the values are already on hand; the page is drawing. `M` |
-| L-11 | `PICK A GAME` and `FORGET MATCH` | `library.md` | — | — | Follows S-08. |
-| L-12 | A save folder per game | `saves.md` | — | — | The app's way to share a save with another emulator; on the R36S the save already sits next to the ROM. `S` |
-| L-13 | `PLAYING` marker and a save icon per game | `library.md` | — | — | `S` |
-| L-14 | `PC BOXES` in a game's menu, opening the offline save editor | `LibraryActivity.kt` (`FeatureFlags.saveEditor`) | — | — | Not in 1.3.2 (V-36): the entry point is behind a flag that is off. `S` |
+| L-01 | A list of games, D-pad or keyboard, A starts one | `library.md` | ✅ | `menu.c`, names only. |
+| L-02 | A grid with covers | `library.md` | — | Covers need a source and a cache. `M` |
+| L-03 | Quick views (`ALL`, `FAVORITES`, `RECENT`, `GB`, `GBC`, `GBA`, `DS`, `HACKS`) | `library.md` | — | `S` once there is more than one console to show |
+| L-04 | Sorting (name, recent, console, ...) and favorites | `library.md` | ◐ | Alphabetical only, read from the folder each start. `S` |
+| L-05 | Rescan the ROMs folder and say what changed | `library.md` | ✅ | Reading the folder at start is the rescan. |
+| L-06 | Import a file with `+` | `library.md` | n/a | The port reads a real folder, so there is nothing to import. |
+| L-07 | Rename and hide a game | `library.md` | — | Would need a per-ROM side file; hiding a file in a shared folder is rarely wanted. `S` |
+| L-08 | Cover art from SteamGridDB, RetroAchievements or a picked image | `library.md` | — | A network client and a key on the handheld; low value for a 3-entry list. `L` |
+| L-09 | Dual-screen launcher (cover, last played, legend, X swaps) | `library.md` | n/a | The R36S has one screen; its list is `menu.c` (`L-01`). |
+| L-10 | The game's `INFO` page (ROM, save, states, achievements) | `library.md` | — | Most of the values are already on hand; the page is drawing. `M` |
+| L-11 | `PICK A GAME` and `FORGET MATCH` | `library.md` | — | Follows S-08. |
+| L-12 | A save folder per game | `saves.md` | — | The app's way to share a save with another emulator; on the R36S the save already sits next to the ROM. `S` |
+| L-13 | `PLAYING` marker and a save icon per game | `library.md` | — | `S` |
+| L-14 | `PC BOXES` in a game's menu, opening the offline save editor | `LibraryActivity.kt` (`FeatureFlags.saveEditor`) | — | Not in 1.3.2 (V-36): the entry point is behind a flag that is off. `S` |
 
 ### The save editor (the library, with the game closed)
 
@@ -388,73 +407,77 @@ copies of saves. It also edits a battery save, so the "saves are sacred" rules
 apply in full: a backup before writing, never a write into a savestate, and a
 refusal when the file changed under us.
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| SE-01 | Read a save's party and its 14 PC boxes | `Gen3SaveData.kt`, `Gen3SaveFile.kt` | — | — | The Gen 3 save format: two blocks, checksums, encrypted party records. `L` |
-| SE-02 | Move a boxed mon to another slot, swapping with what is there | `Gen3SaveEditor` | — | — | Party records are shown, not moved (they carry stats the PC's do not). `M` |
-| SE-03 | Change a mon's held item | `Gen3SaveEditor` | — | — | Mail is excluded, as upstream does. `S` |
-| SE-04 | Change a mon's moves, and add one | `Gen3SaveEditor` | — | — | `S` once SE-01 exists |
-| SE-05 | Change money and coins | `Gen3SaveEditor` | — | — | `S` |
-| SE-06 | Change the bag | `PcBoxesScreen` (BAG page) | — | — | Shares the bag reader from C-B-01. `M` |
-| SE-07 | Only what the game allows (`Gen3Legal`) | `Gen3Legal.kt` | — | — | Eggs and Bad Eggs are not editable. The legality rules are the interesting half. `M` |
-| SE-08 | Write the save the way the game does, with a backup first | `Gen3SaveEditor.build` | — | — | Checksums and both blocks; a backup before the write, per `AGENTS.md`. `M` |
-| SE-09 | `TRADE` between two games' saves, both directions checked | `Gen3Trade.kt` | — | — | A mon for a mon, or into an empty slot, with the games' own rules; nothing changes until every check passes. `L` |
-| SE-10 | A trade that evolves asks about the evolution first | `TradeEvolution` | — | — | `S` |
-| SE-11 | Refuse on an egg, a Bad Egg, or a save that changed while open | `Gen3Trade`, `TradeRefused` | — | — | Same safety shape as `pd_resume_is_fresh`. `S` |
+| SE-01 | Read a save's party and its 14 PC boxes | `Gen3SaveData.kt`, `Gen3SaveFile.kt` | — | The Gen 3 save format: two blocks, checksums, encrypted party records. `L` |
+| SE-02 | Move a boxed mon to another slot, swapping with what is there | `Gen3SaveEditor` | — | Party records are shown, not moved (they carry stats the PC's do not). `M` |
+| SE-03 | Change a mon's held item | `Gen3SaveEditor` | — | Mail is excluded, as upstream does. `S` |
+| SE-04 | Change a mon's moves, and add one | `Gen3SaveEditor` | — | `S` once SE-01 exists |
+| SE-05 | Change money and coins | `Gen3SaveEditor` | — | `S` |
+| SE-06 | Change the bag | `PcBoxesScreen` (BAG page) | — | Shares the bag reader from C-B-01. `M` |
+| SE-07 | Only what the game allows (`Gen3Legal`) | `Gen3Legal.kt` | — | Eggs and Bad Eggs are not editable. The legality rules are the interesting half. `M` |
+| SE-08 | Write the save the way the game does, with a backup first | `Gen3SaveEditor.build` | — | Checksums and both blocks; a backup before the write, per `AGENTS.md`. `M` |
+| SE-09 | `TRADE` between two games' saves, both directions checked | `Gen3Trade.kt` | — | A mon for a mon, or into an empty slot, with the games' own rules; nothing changes until every check passes. `L` |
+| SE-10 | A trade that evolves asks about the evolution first | `TradeEvolution` | — | `S` |
+| SE-11 | Refuse on an egg, a Bad Egg, or a save that changed while open | `Gen3Trade`, `TradeRefused` | — | Same safety shape as `pd_resume_is_fresh`. `S` |
 
 ### Cheats
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| X-01 | One master switch, off by default | `cheats.md` | — | — | mGBA has the cheat engine in the core; the port never enables it. `M` |
-| X-02 | Add a code by hand (name, code, `AUTO` type) | `cheats.md` | — | — | A text page in the core UI plus storage per ROM. `M` |
-| X-03 | Import a RetroArch `.cht` or an mGBA `.cheats` file | `cheats.md` | — | — | Both formats are text; the picker is per host. `M` |
-| X-04 | Every bad line reported, the good ones kept | `cheats.md` | — | — | The app's own parser behaviour; worth copying. `S` |
-| X-05 | Turning cheats on and off while the game runs | `cheats.md` | — | — | `mCheatDevice` can be told at any time. `S` |
-| X-06 | Removing a cheat | `cheats.md` | — | — | `S` |
-| X-07 | Cheats belong to one ROM and never travel with a save | `cheats.md` | — | — | One file per ROM id, outside the battery save. `S` |
-| X-08 | Switching a cheat off takes its patches back out | `cheats.md` | — | — | mGBA's own semantics, but it needs a check per code type. `M` |
+| X-01 | One master switch, off by default | `cheats.md` | — | mGBA has the cheat engine in the core; the port never enables it. `M` |
+| X-02 | Add a code by hand (name, code, `AUTO` type) | `cheats.md` | — | A text page in the core UI plus storage per ROM. `M` |
+| X-03 | Import a RetroArch `.cht` or an mGBA `.cheats` file | `cheats.md` | — | Both formats are text; the picker is per host. `M` |
+| X-04 | Every bad line reported, the good ones kept | `cheats.md` | — | The app's own parser behaviour; worth copying. `S` |
+| X-05 | Turning cheats on and off while the game runs | `cheats.md` | — | `mCheatDevice` can be told at any time. `S` |
+| X-06 | Removing a cheat | `cheats.md` | — | `S` |
+| X-07 | Cheats belong to one ROM and never travel with a save | `cheats.md` | — | One file per ROM id, outside the battery save. `S` |
+| X-08 | Switching a cheat off takes its patches back out | `cheats.md` | — | mGBA's own semantics, but it needs a check per code type. `M` |
 
 ### Other surfaces
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| O-01 | App language picker and translated UI | `companion.md` | — | — | See H-51. |
-| O-02 | `HELP` (the manual in the app) | `welcome.md` | — | — | See H-52. |
-| O-03 | `LICENSES` page | `README.md` | — | — | GPLv3 and the extra credit term must stay visible somewhere; a plain text page is enough. `S` |
-| O-04 | The setup wizard (ROMs folder, saves folder, covers, game buttons) | `install.md` | n/a | n/a | Both hosts have no setup to walk through. |
-| O-05 | An app icon, splash and a PortMaster entry | app manifest | ✅ | ✅ | `linux/arkos/` has icon, screenshot and `gameinfo.xml`. |
+| O-01 | App language picker and translated UI | `companion.md` | — | See H-51. |
+| O-02 | `HELP` (the manual in the app) | `welcome.md` | — | See H-52. |
+| O-03 | `LICENSES` page | `README.md` | — | GPLv3 and the extra credit term must stay visible somewhere; a plain text page is enough. `S` |
+| O-04 | The setup wizard (ROMs folder, saves folder, covers, game buttons) | `install.md` | n/a | The port has no setup to walk through. |
+| O-05 | An app icon, splash and a PortMaster entry | app manifest | ✅ | `linux/arkos/` has icon, screenshot and `gameinfo.xml`. |
 
 ## Part 5: Game and language support
 
 The companion only reads a game it can recognise, and each game needs its own
 RAM addresses, ROM tables and probes (`AGENTS.md`). This is the widest gap
-between the app and the ports, and the one most players notice: most cards in a
+between the app and the port, and the one most players notice: most cards in a
 handheld are not English vanilla.
 
-| ID | Feature | Upstream | Linux | 3DS | Notes / effort |
+| ID | Feature | Upstream | Status | Notes / effort |
+| --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
-| S-01 | FireRed rev 1, English: every tab, ROM tables and the FOE TEAM | `NativeConfig` | ✅ | ✅ | The reference game for the ports. |
-| S-02 | FireRed rev 0, English | `NATIVE_FIRERED_REV0` | ◐ | ◐ | RAM tabs, MAP art and party icons. No DEX, no GUIDE's live pages, no FOE TEAM, no CARD (`FIRERED_REV0_RAM_ONLY`). `M` |
-| S-03 | LeafGreen rev 0 and rev 1 | `NATIVE_LEAFGREEN*` | ◐ | ◐ | Same as S-02 plus the CARD, and the FOE TEAM on rev 1. No DEX tables, so no EVOLVE, and no GUIDE tables. `M` |
-| S-04 | Emerald, English | `NATIVE_EMERALD_RETAIL` | ✅ | ✅ | Second reference game. |
-| S-05 | German, French, Italian, Spanish, Japanese retail GBA games | `NativeReader.kt` (`BPED`, `BPGD`, `AXVJ`, ...), `GameText*Gen.kt` | — | — | Each language needs its addresses (a pret build per language), a charset for `pd_gen3_text` and its name / item / move tables. The largest real gap for the handheld. `L` per game, `XL` for all five |
-| S-06 | Ruby and Sapphire (rev 0 to 2, every language) | `NATIVE_RUBY*`, `NATIVE_SAPPHIRE*` | — | — | The third engine family: party, bag, map, dex and guide tables plus the probes. `L` |
-| S-07 | The app's ROM hacks (Unbound, Radical Red, Gaia, Odyssey, Glazed, Seaglass, Legacy, Kaizo, Imperium, R.O.W.E., SoulGold, Lazarus, Recharged Yellow, ...) | `NativeReader.kt`, `docs/ROM_FEATURES.md` | — | — | Each hack is its own address set, probe and often its own palettes. The ports detect a >16 MB FireRed or Emerald as a hack and leave it alone. `M` per hack |
-| S-17 | Reading a FireRed-layout hack partially (>16 MB, its own data) | `Poller.detect`, `GameTitles.kt`, `BestEffortStore` | — | — | The cheap half of S-08 and the case the app already handles for the reference ROM (V-01): stop refusing at 16 MB, load the rev 0 / rev 1 configs, let every probe decide per tab, and say `PARTIALLY SUPPORTED` in the app's words. Needs a per-tab "did the probe pass" flag in the core; no new addresses. `M` |
-| S-08 | Best effort matching (read the ROM as each known game and keep the fit) | `Poller.detect`, `BestEffortStore` | — | — | `XL`: it needs every reader to be safe against wrong addresses first, which is the `AGENTS.md` probe rule. |
-| S-09 | The match is remembered, `PICK A GAME`, `FORGET MATCH` | `supported-games.md` | — | — | Follows S-08. |
-| S-10 | Game Boy / Game Boy Color companion (party, bag, map, dex) | `GbField.kt`, `GbMon.kt` | — | — | Follows H-02. `XL` |
-| S-11 | Nintendo DS companion | `melonDS` readers | — | — | Follows H-03. `XL` |
-| S-12 | Item descriptions read from the ROM (`gItems`) | `RomItemText.kt` | — | — | Removes the frozen `pd_item_desc.c`, fixes hacks and every other language. `M` |
-| S-13 | The game's own party slot art and colours | `PartySlotStylesGen.kt`, `BagPalette` | ◐ | ◐ | FireRed's look is drawn, not extracted; the app extracts per game. `M` per game |
-| S-14 | The guide's written pages in the game's language | `companion/i18n/guide` | — | — | Follows S-05; `gen_guide.py` reads the English DSL only. `L` per language |
-| S-15 | The real-time clock from the device, dead-battery workaround | `fast-forward.md` | ◐ | ◐ | mGBA keeps an RTC; whether it is seeded from the device clock and survives a dead cartridge clock is unchecked on both hosts. `S` |
-| S-16 | Field actions that write into the game (PC, FLY, item USE / GIVE / TAKE, WILD off, auto-run, run indoors, bike, rod) | `Pc.kt`, `Fly.*`, `FieldItemFns.kt`, `WildEncounters.kt`, `AutoRun.kt` | — | — | Every one is a per-game patch or script call with its own check, and the app's table lists which ROM has which. `XL` for all, `L` per action |
+| S-01 | FireRed rev 1, English: every tab, ROM tables and the FOE TEAM | `NativeConfig` | ✅ | The reference game for the port. |
+| S-02 | FireRed rev 0, English | `NATIVE_FIRERED_REV0` | ◐ | RAM tabs, MAP art and party icons. No DEX, no GUIDE's live pages, no FOE TEAM, no CARD (`FIRERED_REV0_RAM_ONLY`). `M` |
+| S-03 | LeafGreen rev 0 and rev 1 | `NATIVE_LEAFGREEN*` | ◐ | Same as S-02 plus the CARD, and the FOE TEAM on rev 1. No DEX tables, so no EVOLVE, and no GUIDE tables. `M` |
+| S-04 | Emerald, English | `NATIVE_EMERALD_RETAIL` | ✅ | Second reference game. |
+| S-05 | German, French, Italian, Spanish, Japanese retail GBA games | `NativeReader.kt` (`BPED`, `BPGD`, `AXVJ`, ...), `GameText*Gen.kt` | — | Each language needs its addresses (a pret build per language), a charset for `pd_gen3_text` and its name / item / move tables. The largest real gap for the handheld. `L` per game, `XL` for all five |
+| S-06 | Ruby and Sapphire (rev 0 to 2, every language) | `NATIVE_RUBY*`, `NATIVE_SAPPHIRE*` | — | The third engine family: party, bag, map, dex and guide tables plus the probes. `L` |
+| S-07 | The app's ROM hacks (Unbound, Radical Red, Gaia, Odyssey, Glazed, Seaglass, Legacy, Kaizo, Imperium, R.O.W.E., SoulGold, Lazarus, Recharged Yellow, ...) | `NativeReader.kt`, `docs/ROM_FEATURES.md` | — | Each hack is its own address set, probe and often its own palettes. The port detects a >16 MB FireRed or Emerald as a hack and leaves it alone. `M` per hack |
+| S-17 | Reading a FireRed-layout hack partially (>16 MB, its own data) | `Poller.detect`, `GameTitles.kt`, `BestEffortStore` | — | The cheap half of S-08 and the case the app already handles for the reference ROM (V-01): stop refusing at 16 MB, load the rev 0 / rev 1 configs, let every probe decide per tab, and say `PARTIALLY SUPPORTED` in the app's words. Needs a per-tab "did the probe pass" flag in the core; no new addresses. `M` |
+| S-08 | Best effort matching (read the ROM as each known game and keep the fit) | `Poller.detect`, `BestEffortStore` | — | `XL`: it needs every reader to be safe against wrong addresses first, which is the `AGENTS.md` probe rule. |
+| S-09 | The match is remembered, `PICK A GAME`, `FORGET MATCH` | `supported-games.md` | — | Follows S-08. |
+| S-10 | Game Boy / Game Boy Color companion (party, bag, map, dex) | `GbField.kt`, `GbMon.kt` | — | Follows H-02. `XL` |
+| S-11 | Nintendo DS companion | `melonDS` readers | — | Follows H-03. `XL` |
+| S-12 | Item descriptions read from the ROM (`gItems`) | `RomItemText.kt` | — | Removes the frozen `pd_item_desc.c`, fixes hacks and every other language. `M` |
+| S-13 | The game's own party slot art and colours | `PartySlotStylesGen.kt`, `BagPalette` | ◐ | FireRed's look is drawn, not extracted; the app extracts per game. `M` per game |
+| S-14 | The guide's written pages in the game's language | `companion/i18n/guide` | — | Follows S-05; `gen_guide.py` reads the English DSL only. `L` per language |
+| S-15 | The real-time clock from the device, dead-battery workaround | `fast-forward.md` | ◐ | mGBA keeps an RTC; whether it is seeded from the device clock and survives a dead cartridge clock is unchecked on the hardware. `S` |
+| S-16 | Field actions that write into the game (PC, FLY, item USE / GIVE / TAKE, WILD off, auto-run, run indoors, bike, rod) | `Pc.kt`, `Fly.*`, `FieldItemFns.kt`, `WildEncounters.kt`, `AutoRun.kt` | — | Every one is a per-game patch or script call with its own check, and the app's table lists which ROM has which. `XL` for all, `L` per action |
 
 ## Part 6: The data pipeline
 
-The ports never hold game data by hand; `3ds/tools/` generates it from the app's
+The port never holds game data by hand; `3ds/tools/` generates it from the app's
 Kotlin sources, and CI fails when re-running the generators would change the
 result (`AGENTS.md`). A ported feature that needs new data therefore starts in the
 generator, not in `pd_tables_gen.c`.
@@ -486,42 +509,42 @@ Recorded so the list is not read as an omission. Each one is a deliberate `n/a`.
 
 | Upstream feature | Why not | Where it would land instead |
 | --- | --- | --- |
-| Dual-screen launcher, `SWAP SCREENS`, `SINGLE SCREEN` | The app's problem is "one screen, companion must share it". The 3DS has two screens with the game on top and the companion on the bottom; the R36S has one and no touch. | Nothing to port. |
-| Phone held upright, companion docked under the game, grip sizing | Android/orientation specific. | If the Linux port ever runs on a 16:9 screen, `render.c`'s scaling is the place, not the core. |
-| `TOUCH CONTROLS` and the layout editor | The R36S has no touchscreen; on the 3DS the touchscreen is the companion. | Pad mapping (H-43). |
+| Dual-screen launcher, `SWAP SCREENS`, `SINGLE SCREEN` | The app's problem is "one screen, companion must share it". The R36S has one screen and no touch, and the companion already is the whole screen. | Nothing to port. |
+| Phone held upright, companion docked under the game, grip sizing | Android/orientation specific. | If the port ever runs on a 16:9 screen, `render.c`'s scaling is the place, not the core. |
+| `TOUCH CONTROLS` and the layout editor | The R36S has no touchscreen. | Pad mapping (H-43). |
 | Casting to a TV | Android presentation API. | `--fullscreen` and the display's own mode. |
-| Setup wizard, folder pickers via Android SAF | Both hosts read a real filesystem path given by a script or a constant. | A line in the README, as today. |
+| Setup wizard, folder pickers via Android SAF | The port reads a real filesystem path given by a script or a constant. | A line in the README, as today. |
 | Cover art from SteamGridDB / RetroAchievements | A network client and an API key on a handheld whose list is three entries long. | `L-02` only if the library ever grows. |
-| Update check and install | PortMaster and 3DS homebrew channels own updates. | Their release flow. |
-| Sleep and resume as Android lifecycle | The R36S suspends the whole process; the 3DS has HOME. | `H-13` on the 3DS would cover the visible half. |
+| Update check and install | PortMaster owns updates. | Its release flow. |
+| Sleep and resume as Android lifecycle | The R36S suspends the whole process. | `H-13` covers the visible half. |
 | `HOME` / guide button as BACK | Android button. | Nothing. |
-| DS games | No DS core in either port, and the RK3326 has no headroom for one. | On the 3DS, hand `.nds` files to TWiLight Menu (`H-03`). |
+| DS games | No DS core fits the RK3326. | Nothing. |
 
 One thing that is *not* on this list although it looks like it belongs:
 **`EXPAND` (H-32)**. It fits the hardware in principle, and it is the app's
 signature feature, but it rebuilds map strips every frame per game. Do not start
 it before phase 3's frame times are known; if it ever runs, it runs on a desktop
-and on a New 3DS first.
+first.
 
 ## Part 8: Verifying on the phone
 
-You have the app on your phone, which makes it the reference the ports are
+You have the app on your phone, which makes it the reference the port is
 measured against. **Everything in this part is done in the Android app, not on
-the R36S or the 3DS.** There are three different questions in this file and it is
+the R36S.** There are three different questions in this file and it is
 easy to mix them up:
 
 | Question | Where the answer comes from | Where it is written down |
 | --- | --- | --- |
 | What does the app do, exactly? | The Android app on your phone, by using it | This part, answers filed against the IDs |
-| What do the ports do today? | Reading `3ds/core`, `3ds/ctr` and `linux/` | Parts 1 to 6, the Linux and 3DS columns |
-| Does it hold up on the hardware? | The R36S and the 3DS themselves | Not here: `linux/PLAN.md` phase 3 (`--stats`, frame times, exFAT writes, PortMaster install) and the 3DS README's hardware section |
+| What does the port do today? | Reading `linux/` and the core in `3ds/core` | Parts 1 to 6, the Status column |
+| Does it hold up on the hardware? | The R36S itself | Not here: `linux/PLAN.md` phase 3 (`--stats`, frame times, exFAT writes, PortMaster install) |
 
 So this part never asks you to start ArkOS. The only port item that goes on a
 device rather than on the phone is phase 3's list, and that has its own
 checklist in `linux/PLAN.md`.
 
 Two things before starting: note **which game, version and language** you play
-for each check (the ports support FireRed rev 1, LeafGreen's RAM and English
+for each check (the port supports FireRed rev 1, LeafGreen's RAM and English
 Emerald only, so a German Emerald would answer both S-05 and most content rows),
 and keep real Pokémon, move and item names out of anything that gets copied into
 this file (the repo's publication rule).
@@ -554,7 +577,7 @@ answers.
 
 | Game | Use it for | Why |
 | --- | --- | --- |
-| A retail build the ports already read: English FireRed rev 1, FireRed rev 0, LeafGreen, or Emerald (`BPRE`, `BPGE`, `BPEE`) | Blocks 3 to 10, the content checks | The app then has every tab (DEX, GUIDE, STATS, LEARN), so each check is possible at all. And the same ROM can later be run through `linux/build/pokedaisy` and the 3DS preview, so app and port are compared on the same save, screen by screen |
+| A retail build the port already reads: English FireRed rev 1, FireRed rev 0, LeafGreen, or Emerald (`BPRE`, `BPGE`, `BPEE`) | Blocks 3 to 10, the content checks | The app then has every tab (DEX, GUIDE, STATS, LEARN), so each check is possible at all. And the same ROM can later be run through `linux/build/pokedaisy` and the core's preview, so app and port are compared on the same save, screen by screen |
 | The hack you actually play (`V-01`: 32 MB, `BPRE`) | Block 2 and Block 11, the support checks | It is the best-effort case S-17 is about: what a partial match still reads, and what it switches off |
 
 Never check content on the partially supported hack: a missing DEX or GUIDE there
@@ -589,7 +612,7 @@ and 7 first, they need no items.
 | V-02 | Same page, `ROM` section | Game code and revision, so I can map it to a `NativeConfig` entry |
 | V-03 | Play it and open the companion | Which tabs exist (a missing DEX or GUIDE means the game has no tables for them, which decides C-04) |
 
-### B. Content the ports could copy next (read only, safe)
+### B. Content the port could copy next (read only, safe)
 
 | ID | On the phone | What I need |
 | --- | --- | --- |
@@ -684,8 +707,8 @@ What follows from it:
 - **The game being played is a FireRed hack, 32 MB, and the app reads it only
   partially.** `2. BILDSCHIRM` says `Teilweise`, and the hint calls it an attempt
   to read it as Pokémon FireRed. That is S-08 (best effort) working as designed,
-  and it is the case the ports refuse outright: `pd_game_detect` turns every
-  FireRed over 16 MB into "ROM hacks aren't supported on 3DS yet".
+  and it is the case the port refuses outright: `pd_game_detect` turns every
+  FireRed over 16 MB into "ROM hacks aren't supported yet".
 - **This reorders the plan.** German retail games (S-05) are not the gap for this
   player; a FireRed-layout hack is. The cheap version of S-07 is to stop refusing
   over 16 MB and let the existing FireRed rev 0 / rev 1 configs try, with their
@@ -704,7 +727,7 @@ What follows from it:
 | --- | --- |
 | V-03 | Tab bar on the title screen and in the game: five chips plus the grid and the gear. In a battle a sixth chip appears at the front and the last one gives up its place |
 | C-05 | The title screen shows a window in `PARTY`: "Your party shows up here once you're in the game." with a blinking `PRESS START`, not zeros |
-| C-04 | In a battle `BATTLE` sits at the front and `GUIDE` is gone from the bar. The ports instead put `BATTLE` in the `DEX` slot |
+| C-04 | In a battle `BATTLE` sits at the front and `GUIDE` is gone from the bar. The port put `BATTLE` in the `DEX` slot instead; P1.1 fixed that |
 | C-P-01 | Slot: the ROM's icon, name, gender mark, `Lv 6`, HP bar with `21/21`; empty slots are drawn as empty game slots |
 | C-P-06 | Summary: name, gender, icon, level, type chip, HP bar, EXP bar; the four moves on the right with type, `PWR` and `PP`; empty move slots drawn as `-` |
 | C-P-07 | EXP bar with `NEXT 31` under it |
@@ -721,7 +744,7 @@ What follows from it:
 - The bar during a battle is six chips: the battle tab pushes the last tab off. `C-04` now says what the app does, so the port's "BATTLE takes the DEX slot" is a difference, not a simplification, and it should follow the app instead.
 - `STATS` and `LEARN` are buttons inside the summary, not tabs. That is what `C-P-09` and `C-P-10` have to be in the core, and it keeps the tab bar as it is.
 - `LEARN`'s TM half could not be checked yet: it needs a TM in the bag. `V-05` stays open for that one detail.
-- `C-P-08` needs the third block (`IMMUNE TO`) from a mon that has an immunity, and `C-BT-03`'s per-side threat tag is a detail the ports do not draw at all today.
+- `C-P-08` needs the third block (`IMMUNE TO`) from a mon that has an immunity, and `C-BT-03`'s per-side threat tag is a detail the port does not draw at all today.
 
 #### 2026-10-27, Block 4 (BAG, FireRed rev 1, a save with items)
 
@@ -778,7 +801,7 @@ What follows from it:
 | C-D-03 | Confirmed, every filter carries its count |
 | C-D-04 | Entry: the picture on a grey square, a footprint icon before the category, the category, one type chip, `HT` and `WT` in the game's own units, then the dex text |
 | C-D-05 | The base stats are five rows with a bar each, then `TOTAL` and `ABILITY` under a divider (seen on a second entry, scrolled) |
-| C-D-07 | The footprint is drawn before the category, which the ports do not. Under the ability come `EGG GROUP`, `GENDER` (both symbols with a percentage each) and `CATCH RATE`, which the ports also lack. The `INFO` page scrolls |
+| C-D-07 | The footprint is drawn before the category, which the port does not. Under the ability come `EGG GROUP`, `GENDER` (both symbols with a percentage each) and `CATCH RATE`, which the port also lacks. The `INFO` page scrolls |
 | C-D-08 | `EVOLVE` draws one group per species that evolves: the species, an arrow to what it becomes, and the condition under the arrow in red (`LU 7`). The page's own species is red wherever it appears, and the family is shown both ways |
 | C-D-09 | Confirmed (see V-10) |
 | C-D-10 | Confirmed (see V-11) |
@@ -794,7 +817,7 @@ What follows from it:
 - The footprint in `C-D-07` is the kind of detail that can stay out of a first
   port; the egg group, gender and catch rate lines are the ones worth having.
 - Still unseen: the `INFO` page below the stats (`TOTAL`, ability, egg group,
-  gender, catch rate) and the `EVOLVE` chip, which the ports already draw.
+  gender, catch rate) and the `EVOLVE` chip, which the port already draws.
 
 #### 2026-10-27, Block 6 and 7 (GUIDE and MAP, FireRed rev 1)
 
@@ -818,7 +841,7 @@ What follows from it:
   headers, so the port's single boss is a narrowed version, not a different design.
 - The hint-then-answer pattern is used per party member of the boss, not only per
   hand-written entry, which is why the port can reuse the same row drawing.
-- `PLACES` carries the map page per row. The ports already group and sort the same
+- `PLACES` carries the map page per row. The port already groups and sorts the same
   way (`pd_map`), so this is one extra right-aligned label.
 
 #### HUD, read from the source instead of the phone
@@ -863,8 +886,8 @@ What follows from it:
 
 - `C-04` is now a rule rather than an observation, which is what a port needs: the
   core has to expose "did this tab's data match" and the UI fills the bar from that.
-- `MAX_BAR_TABS` and the battle taking a slot is the exact behaviour the ports differ
-  on today, so it is a small, well-defined change.
+- `MAX_BAR_TABS` and the battle taking a slot was the exact behaviour the port
+  differed on, so it was a small, well-defined change.
 
 ## Part 9: Suggested order
 
@@ -876,11 +899,11 @@ a feature that writes into the running game waits for hardware. It refines
 | Step | Rows | Why here |
 | --- | --- | --- |
 | 0. Measure | `--stats` per SCREEN mode on the R36S | Everything drawn over the game competes with the emulator. It gates H-32, H-34, H-41 and P-HUD-09, and it is the one open item of phase 3 |
-| 1. Free parity | C-02, C-03, C-04, C-07, C-P-03, C-P-07, C-P-08, C-D-03, C-D-11, C-B-04, C-B-05, C-B-06, C-B-07, C-BT-03, C-BT-08, C-G-07, C-G-10, C-SET-01, C-SET-04, H-24, H-27, H-29, H-38 | No new addresses and no new probes: the snapshot and the generated tables already hold the data. One change lands on both ports. This is PLAN phase 4's small half |
+| 1. Free parity | C-02, C-03, C-04, C-07, C-P-03, C-P-07, C-P-08, C-D-03, C-D-11, C-B-04, C-B-05, C-B-06, C-B-07, C-BT-03, C-BT-08, C-G-07, C-G-10, C-SET-01, C-SET-04, H-24, H-27, H-29, H-38 | No new addresses and no new probes: the snapshot and the generated tables already hold the data. This is PLAN phase 4's small half |
 | 2. DEX detail and LEARN | C-D-07, C-D-09, C-D-10, C-P-09, C-P-10, C-B-09 (needs D-06) | PLAN phase 4 items 1 and 2. Real new tables, so each one needs a probe and a dump from a retail ROM |
-| 3. Host quality of life | H-13 on the 3DS, H-18, H-19, H-20, H-43, H-44, H-45, H-22, H-53, H-16, L-10, L-13 | No game data at all, testable on the desktop, and it removes the "one slot, fixed buttons" wart the READMEs admit to |
+| 3. Host quality of life | H-13, H-18, H-19, H-20, H-43, H-44, H-45, H-22, H-53, H-16, L-10, L-13 | No game data at all, testable on the desktop, and it removes the "one slot, fixed buttons" wart the README admits to |
 | 3b. Offline save editor | SE-01 to SE-11, with L-14's `PC BOXES` entry point | No emulator is running, so it is fully testable on a desktop with copied saves, and it is the one thing a plain emulator cannot do. It writes a battery save, so it needs SE-08's backup first. `Gen3SaveData` is plain byte work, not per-game addresses. **Demoted:** the flag is off in 1.3.2 (V-36), so this is a bet on upstream rather than on parity with today's app |
-| 4. The game you actually play | S-17, then S-08 and S-09, then S-07 hack by hack, then S-05 | V-01 and V-02: the reference game is a 32 MB FireRed hack that the app reads partially. Parity for this player means the ports stop refusing over 16 MB and let the probes decide (S-17), which is much cheaper than full best effort. German retail games stay worth doing, but after this |
+| 4. The game you actually play | S-17, then S-08 and S-09, then S-07 hack by hack, then S-05 | V-01 and V-02: the reference game is a 32 MB FireRed hack that the app reads partially. Parity for this player means the port stops refusing over 16 MB and let the probes decide (S-17), which is much cheaper than full best effort. German retail games stay worth doing, but after this |
 | 5. Actions that write | C-M-08, C-B-13, C-B-11, C-B-12, then a subset of P-QM | PLAN phase 5 item 2. Each is a per-game patch and a check on hardware; the snapshot alone will not tell you it worked |
 | 6. Optional and expensive | P-HUD, C-MK-01 to C-MK-05, C-BT-11 to C-BT-13 with P-BB, X-01 to X-08, C-A-01 and below, H-32 | Touch-first designs, per-frame drawing, a new network dependency (achievements), or a per-frame rewrite (EXPAND). Only what the phone checks (V-24 to V-27) say is worth it |
 

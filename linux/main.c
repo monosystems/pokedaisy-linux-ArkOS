@@ -474,7 +474,7 @@ static bool bus_read(void* ctx, uint32_t addr, void* out, size_t len) {
     return false;
 }
 
-// The companion's screen modes are the 3DS port's names: PIXEL is whole-pixel
+// The companion's screen modes keep the core's names: PIXEL is whole-pixel
 // scaling, SHARP fills the screen, STRETCH fills it both ways.
 static int scale_for_screen_mode(int mode) {
     if (mode == PD_SCREEN_PIXEL) {

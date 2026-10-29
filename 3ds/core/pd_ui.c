@@ -4,26 +4,118 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "pd_dex.h"
+#include "pd_guide.h"
 #include "pd_ui_internal.h"
 
 #define CHIP_H 22
-#define FF_W 28
-#define GEAR_W 24
+// The bar's three icon chips - MORE, the fast-forward pair and the gear.
+// Narrow, because a battle's six chips have to fit 320 px next to them and
+// BATTLE alone is 42 of those pixels.
+#define ICON_W 20
+// How far apart the bar's chips sit.
+#define CHIP_GAP 3
 // How far the stylus moves on a list before it scrolls instead of tapping.
 #define DRAG_SLOP 6
+// TWEAKS > TAB ANIMATIONS: the new tab slides in from the side over this long,
+// starting a sixth of the screen out - the app's slideInHorizontally, w / 6 at
+// 220 ms.
+#define TAB_SLIDE_MS 220
+#define TAB_SLIDE_PX (PD_UI_WIDTH / 6)
+// The party icon's fastest frame (a healthy Pokémon's six GBA frames): while a
+// slot is held, draw at that rate so the game's own speed reads right.
+#define ICON_MS 60
 
-// The tab bar's chips; SETTINGS is the gear after them. A battle puts BATTLE
-// in the last chip's slot (the app's rule) and gives it back afterwards.
-#define BAR_TABS 5
-static const enum pd_tab BAR[BAR_TABS] = { PD_TAB_PARTY, PD_TAB_BAG, PD_TAB_MAP, PD_TAB_GUIDE, PD_TAB_DEX };
+// The companion's tabs in the app's order (COMPANION_TABS: PARTY, DEX, MAP,
+// ITEMS, GUIDE, CARD). The TRAINER CARD is off the bar until the player puts it
+// there in SETTINGS > TAB BAR; it also opens from SETTINGS' title window.
+const enum pd_tab PD_TAB_ORDER[PD_TAB_ORDER_COUNT] = {
+    PD_TAB_PARTY, PD_TAB_DEX, PD_TAB_MAP, PD_TAB_BAG, PD_TAB_GUIDE, PD_TAB_CARD,
+};
+
 static const char* const TAB_LABELS[PD_TAB_COUNT] = {
     [PD_TAB_PARTY] = "PARTY", [PD_TAB_BAG] = "BAG", [PD_TAB_MAP] = "MAP", [PD_TAB_GUIDE] = "GUIDE",
     [PD_TAB_DEX] = "DEX", [PD_TAB_BATTLE] = "BATTLE", [PD_TAB_SETTINGS] = "", [PD_TAB_CARD] = "CARD",
+    [PD_TAB_MORE] = "MORE",
 };
 
-// The tab a bar slot shows now.
-static enum pd_tab slot_tab(const struct pd_ui* ui, int slot) {
-    return slot == ui->battleSlot ? PD_TAB_BATTLE : BAR[slot];
+const char* pd_tab_label(enum pd_tab tab) {
+    return (unsigned) tab < PD_TAB_COUNT ? TAB_LABELS[tab] : "";
+}
+
+// The MORE chip's nine squares, 11x11 (PixelIcons.more, the gear's size):
+// three rows of three 3x3 squares.
+static const uint16_t MORE_BITMAP[11] = {
+    0x777, 0x777, 0x777, 0, 0x777, 0x777, 0x777, 0, 0x777, 0x777, 0x777,
+};
+
+// C-04: a tab exists only when this game has its data - the POKéDEX its
+// tables, the GUIDE its pages, the TRAINER CARD its art (and a game this port
+// reads at all: a refused ROM shows NOT SUPPORTED on every page, so no chip
+// should offer one). PARTY, BAG and MAP read the save such a game still has.
+// SETTINGS > TAB BAR asks the same question, so it is not static.
+bool pd_tab_available(const struct pd_game* g, enum pd_tab t) {
+    switch (t) {
+    case PD_TAB_DEX: return pd_dex_available(g);
+    case PD_TAB_GUIDE: return g->cfg != NULL && pd_guide_for(g) != NULL;
+    case PD_TAB_CARD: return g->cfg != NULL && g->cfg->cardStyle && g->rom != NULL;
+    default: return true;
+    }
+}
+
+static bool tab_in_more(const struct pd_ui* ui, enum pd_tab t) {
+    for (int i = 0; i < ui->moreCount; i++) {
+        if (ui->more[i] == t) return true;
+    }
+    return false;
+}
+
+static bool tab_on_bar(const struct pd_ui* ui, enum pd_tab t) {
+    for (int i = 0; i < ui->barCount; i++) {
+        if (ui->bar[i] == t) return true;
+    }
+    return false;
+}
+
+// The bar from what this game has and what the player picked (SETTINGS > TAB
+// BAR): the picks first, in the app's order, then the game's other tabs fill
+// the places left over. BATTLE leads a battle and takes one of the places, and
+// what is left waits behind MORE (C-02, C-03, C-04).
+static void layout(struct pd_ui* ui, const struct pd_game* g) {
+    int room = PD_BAR_TABS - (ui->battleWasOn ? 1 : 0);
+    bool on[PD_TAB_COUNT] = { false };
+    ui->barCount = 0;
+    ui->moreCount = 0;
+    ui->tabsPicked = 0;
+    if (ui->battleWasOn) ui->bar[ui->barCount++] = PD_TAB_BATTLE;
+    int seated = 0;
+    for (int pass = 0; pass < 2; pass++) {
+        for (int i = 0; i < PD_TAB_ORDER_COUNT; i++) {
+            enum pd_tab t = PD_TAB_ORDER[i];
+            if (!pd_tab_available(g, t)) continue;
+            bool picked = pd_tab_shown(ui->settings, t);
+            if (pass == 0 && picked) ui->tabsPicked++;
+            if (pass == 0 ? !picked : picked) continue;
+            if (on[t]) continue;
+            if (seated >= room) continue;
+            on[t] = true;
+            seated++;
+        }
+    }
+    for (int i = 0; i < PD_TAB_ORDER_COUNT; i++) {
+        enum pd_tab t = PD_TAB_ORDER[i];
+        if (!pd_tab_available(g, t)) continue;
+        if (on[t]) ui->bar[ui->barCount++] = t;
+        else ui->more[ui->moreCount++] = t;
+    }
+    // A tab this game lost, or one the bar gave up and MORE doesn't hold,
+    // falls back to the first chip - the app's `current`. PARTY is in every
+    // game's bar, so there always is one.
+    bool ok = (ui->tab == PD_TAB_MORE) ? ui->moreCount > 0
+            : ui->tab == PD_TAB_SETTINGS;
+    for (int i = 0; !ok && i < ui->barCount; i++) ok = ui->bar[i] == ui->tab;
+    for (int i = 0; !ok && i < ui->moreCount; i++) ok = ui->more[i] == ui->tab;
+    if (!ok) ui->tab = ui->bar[0];
 }
 
 // The SETTINGS gear, 11x11 (bit 0 = left):
@@ -33,13 +125,57 @@ static const uint16_t GEAR[11] = {
     0x070, 0x376, 0x3FE, 0x1DC, 0x78F, 0x707, 0x78F, 0x1DC, 0x3FE, 0x376, 0x070,
 };
 
+// The bar's slot for a tab, which is the way the slide points: a tab MORE
+// holds sits where MORE does, and the gear ends the row (the app's barIndex).
+static int bar_slot(const struct pd_ui* ui, enum pd_tab t) {
+    for (int i = 0; i < ui->barCount; i++) {
+        if (ui->bar[i] == t) return i;
+    }
+    if (t == PD_TAB_MORE || tab_in_more(ui, t)) return ui->barCount;
+    return ui->barCount + (ui->moreCount ? 1 : 0);
+}
+
+void ui_open_tab(struct pd_ui* ui, enum pd_tab tab) {
+    if (ui->tab == tab) return;
+    if (pd_tweak_on(ui->settings, PD_TWEAK_TAB_ANIM)) {
+        ui->tabSlideDir = bar_slot(ui, tab) >= bar_slot(ui, ui->tab) ? 1 : -1;
+        ui->tabSlideMs = TAB_SLIDE_MS;
+    } else {
+        ui->tabSlideMs = 0;
+    }
+    ui->tab = tab;
+    ui->summarySlot = -1;
+}
+
+// How far the tab body is still from home, in pixels: the app's slide eases
+// out, so the tab covers most of the way in the first half.
+static int slide_dx(const struct pd_ui* ui) {
+    if (!ui->tabSlideMs) return 0;
+    int left = ui->tabSlideMs;
+    return ui->tabSlideDir * TAB_SLIDE_PX * (left * left / TAB_SLIDE_MS) / TAB_SLIDE_MS;
+}
+
+// Moves what the tab body drew by dx pixels, uncovering the backdrop behind it
+// - the other half of the slide (the app slides the old tab out under it; here
+// the frame is redrawn whole, so the backdrop is what it uncovers).
+static void slide_content(struct pd_canvas* c, int dx) {
+    int strip = dx < 0 ? -dx : dx;
+    for (int y = CONTENT_Y; y < c->h; y++) {
+        uint32_t* row = c->px + y * c->w;
+        if (dx > 0) memmove(row + dx, row, (size_t) (c->w - dx) * sizeof(uint32_t));
+        else memmove(row, row - dx, (size_t) (c->w + dx) * sizeof(uint32_t));
+    }
+    pd_clip(c, dx > 0 ? 0 : c->w + dx, CONTENT_Y, strip, c->h - CONTENT_Y);
+    pd_backdrop(c);
+    pd_unclip(c);
+}
+
 void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     memset(ui, 0, sizeof(*ui));
     ui->tab = PD_TAB_PARTY;
     ui->summarySlot = -1;
     ui->bagSelected = -1;
     ui->pressedId = -1;
-    ui->battleSlot = -1;
     ui->dexNational = -1;
     ui->mapPage = -1;
     ui->mapSel = -1;
@@ -47,18 +183,22 @@ void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     ui->guideOpen = -1;
     ui->foeSelected = ui->foeShown = -1;
     ui->lastFoeActive = ui->lastFoeNext = -1;
+    ui->settingsPage = PD_SETTINGS_HOME;
     ui->settings = settings;
 }
 
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
     bool on = s->valid && s->inBattle && s->battlers[PD_POS_PLAYER_LEFT].species;
     if (on && !ui->battleWasOn) {
-        // BATTLE takes the bar's last tab's place (the app's rule - PARTY,
-        // what a battle needs most, stays); its end brings back what was open.
+        // A battle opens BATTLE, at the front of the bar (the app's rule);
+        // its end brings back what was open. TWEAKS > JUMP TO BATTLE off leaves
+        // the companion where it is: the chip still shows up to be tapped.
         ui->tabBeforeBattle = ui->tab;
-        ui->battleSlot = BAR_TABS - 1;
-        ui->tab = PD_TAB_BATTLE;
-        ui->summarySlot = -1;
+        if (pd_tweak_on(ui->settings, PD_TWEAK_JUMP_BATTLE)) {
+            ui->tabSlideMs = 0;
+            ui->tab = PD_TAB_BATTLE;
+            ui->summarySlot = -1;
+        }
         ui->overlay = PD_OVERLAY_NONE;
         ui->battlePane = 0;
         ui->foeSeen = 0;
@@ -66,7 +206,6 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
         ui->lastFoeActive = ui->lastFoeNext = -1;
     } else if (!on && ui->battleWasOn) {
         if (ui->tab == PD_TAB_BATTLE) ui->tab = ui->tabBeforeBattle;
-        ui->battleSlot = -1;
     }
     ui->battleWasOn = on;
     // The FOE TEAM: what's been sent out or announced counts as seen; a new
@@ -98,34 +237,58 @@ static void chip(struct pd_ui* ui, struct pd_canvas* c, int x, int w, bool open,
 }
 
 static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_info* host) {
-    int w = (c->w - MARGIN * (BAR_TABS + 3) - FF_W - GEAR_W) / BAR_TABS;
+    int more = ui->moreCount ? 1 : 0;
+    // Three pixels between the chips rather than four: a battle's six chips
+    // and the three icon chips after them have to fit 320 px, and BATTLE's
+    // word alone is 42 of them. What the division leaves over goes to the
+    // first chips, so the row ends at the content's right edge.
+    int gaps = CHIP_GAP * (ui->barCount + more + 1);
+    int room = c->w - 2 * MARGIN - gaps - ICON_W * (2 + more);
+    int w = room / ui->barCount, rem = room - w * ui->barCount;
     int x = MARGIN;
-    for (int i = 0; i < BAR_TABS; i++, x += w + MARGIN) {
-        enum pd_tab t = slot_tab(ui, i);
+    for (int i = 0; i < ui->barCount; i++) {
+        enum pd_tab t = ui->bar[i];
+        int ww = w + (i < rem ? 1 : 0);
         bool open = ui->tab == t;
-        chip(ui, c, x, w, open, HIT_TAB + (int) t);
+        chip(ui, c, x, ww, open, HIT_TAB + (int) t);
         int tw = pd_text_width(TAB_LABELS[t]);
-        pd_text(c, x + (w - tw) / 2, pd_text_y(2, CHIP_H), TAB_LABELS[t], open ? PD_VALUE : PD_TITLE_TEXT,
+        pd_text(c, x + (ww - tw) / 2, pd_text_y(2, CHIP_H), TAB_LABELS[t], open ? PD_VALUE : PD_TITLE_TEXT,
                 open ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
+        x += ww + CHIP_GAP;
+    }
+    // MORE, left of the gear and only while something is hidden: lit while it
+    // is open and while one of its tabs is, since BACK goes there.
+    if (more) {
+        bool open = ui->tab == PD_TAB_MORE || tab_in_more(ui, ui->tab);
+        chip(ui, c, x, ICON_W, open, HIT_MORE);
+        pd_bitmap(c, x + (ICON_W - 11) / 2, 2 + (CHIP_H - 11) / 2, MORE_BITMAP, 11, open ? PD_VALUE : PD_TITLE_TEXT);
+        x += ICON_W + CHIP_GAP;
     }
     // Fast-forward: lit while on.
     bool ff = host && host->ffOn;
-    chip(ui, c, x, FF_W, ff, HIT_FF);
+    chip(ui, c, x, ICON_W, ff, HIT_FF);
     uint32_t col = ff ? PD_VALUE : PD_TITLE_TEXT;
-    pd_triangle(c, x + 7, 2 + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
-    pd_triangle(c, x + 13, 2 + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
-    x += FF_W + MARGIN;
-    // The TRAINER CARD is under SETTINGS: the gear stays lit.
-    bool open = ui->tab == PD_TAB_SETTINGS || ui->tab == PD_TAB_CARD;
-    chip(ui, c, x, GEAR_W, open, HIT_TAB + PD_TAB_SETTINGS);
-    pd_bitmap(c, x + (GEAR_W - 11) / 2, 2 + (CHIP_H - 11) / 2, GEAR, 11, open ? PD_VALUE : PD_TITLE_TEXT);
+    pd_triangle(c, x + 4, 2 + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
+    pd_triangle(c, x + 10, 2 + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
+    x += ICON_W + CHIP_GAP;
+    // The TRAINER CARD opens from SETTINGS: the gear stays lit on its page
+    // until the card has a chip or a MORE tile of its own.
+    bool open = ui->tab == PD_TAB_SETTINGS ||
+                (ui->tab == PD_TAB_CARD && !tab_on_bar(ui, PD_TAB_CARD) && !tab_in_more(ui, PD_TAB_CARD));
+    chip(ui, c, x, ICON_W, open, HIT_TAB + PD_TAB_SETTINGS);
+    pd_bitmap(c, x + (ICON_W - 11) / 2, 2 + (CHIP_H - 11) / 2, GEAR, 11, open ? PD_VALUE : PD_TITLE_TEXT);
 }
 
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host) {
+    layout(ui, g);
     ui->hitCount = 0;
     pd_backdrop(c);
     tab_bar(ui, c, host);
+    // The tab body slides in (TWEAKS): its hits move with it, so a press lands
+    // on what the player sees.
+    int dx = slide_dx(ui);
+    ui->hitDx = dx;
     if (ui->tab == PD_TAB_SETTINGS) {
         ui_settings_tab(ui, c, g, s, host);
     } else if (!g->cfg) {
@@ -142,9 +305,13 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
         ui_dex_tab(ui, c, g, s);
     } else if (ui->tab == PD_TAB_CARD) {
         ui_card_tab(ui, c, g, s);
+    } else if (ui->tab == PD_TAB_MORE) {
+        ui_more_tab(ui, c);
     } else {
         ui_battle_tab(ui, c, g, s);
     }
+    ui->hitDx = 0;
+    if (dx) slide_content(c, dx);
     if (ui->overlay == PD_OVERLAY_PLACES) {
         ui_places_overlay(ui, c, g);
     } else if (ui->overlay == PD_OVERLAY_GUIDE_NOTICE) {
@@ -166,13 +333,40 @@ static int* scroll_target(struct pd_ui* ui) {
 }
 
 bool pd_ui_tick(struct pd_ui* ui, unsigned ms) {
-    // The MAP cursor swaps sizes every 20 GBA frames, like the game's.
     bool redraw = ui_card_tick(ui, ms);
-    ui->blinkMs += ms;
-    if (ui->blinkMs < 333) return redraw;
-    ui->blinkMs %= 333;
-    ui->mapBlink = !ui->mapBlink;
-    return redraw || (ui->tab == PD_TAB_MAP && ui->overlay == PD_OVERLAY_NONE);
+    // Time passing, for the party icon's two frames (below).
+    ui->animMs += ms;
+    // The tab just opened slides in (TWEAKS): draw until it has arrived.
+    if (ui->tabSlideMs) {
+        ui->tabSlideMs -= (int) ms;
+        if (ui->tabSlideMs < 0) ui->tabSlideMs = 0;
+        redraw = true;
+    }
+    // The MAP cursor swaps sizes every 20 GBA frames, like the game's; TWEAKS
+    // can keep it at one size.
+    if (pd_tweak_on(ui->settings, PD_TWEAK_MAP_CURSOR)) {
+        ui->blinkMs += ms;
+        if (ui->blinkMs >= 333) {
+            ui->blinkMs %= 333;
+            ui->mapBlink = !ui->mapBlink;
+            redraw = redraw || (ui->tab == PD_TAB_MAP && ui->overlay == PD_OVERLAY_NONE);
+        }
+    } else {
+        ui->mapBlink = false;
+    }
+    // The party icon under the press bounces (TWEAKS), at the game's HP-based
+    // speed: the fastest frame is 100 ms, so draw every 60.
+    if (pd_tweak_on(ui->settings, PD_TWEAK_PARTY_ICONS) && ui->tab == PD_TAB_PARTY &&
+        ui->summarySlot < 0 && ui->pressedId >= HIT_SLOT && ui->pressedId < HIT_SLOT + PD_PARTY_SIZE) {
+        ui->iconMs += ms;
+        if (ui->iconMs >= ICON_MS) {
+            ui->iconMs = 0;
+            redraw = true;
+        }
+    } else {
+        ui->iconMs = 0;
+    }
+    return redraw;
 }
 
 static void close_overlay(struct pd_ui* ui, enum pd_action action) {
@@ -181,7 +375,8 @@ static void close_overlay(struct pd_ui* ui, enum pd_action action) {
 }
 
 static void act(struct pd_ui* ui, int id) {
-    if (ui_map_act(ui, id) || ui_dex_act(ui, id) || ui_guide_act(ui, id) || ui_battle_act(ui, id) || ui_card_act(ui, id)) {
+    if (ui_map_act(ui, id) || ui_dex_act(ui, id) || ui_guide_act(ui, id) || ui_battle_act(ui, id) ||
+        ui_card_act(ui, id) || ui_settings_act(ui, id)) {
         return;
     }
     if (ui->overlay != PD_OVERLAY_NONE) {
@@ -201,8 +396,13 @@ static void act(struct pd_ui* ui, int id) {
         return;
     }
     if (id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) {
-        ui->tab = (enum pd_tab) (id - HIT_TAB);
-        ui->summarySlot = -1;
+        ui_open_tab(ui, (enum pd_tab) (id - HIT_TAB));
+    } else if (id == HIT_MORE) {
+        ui_open_tab(ui, PD_TAB_MORE);
+    } else if (id == HIT_MORE_TAB_BAR) {
+        // MORE's own button: the app's way into the pick of the bar's chips.
+        ui->settingsPage = PD_SETTINGS_TABS;
+        ui_open_tab(ui, PD_TAB_SETTINGS);
     } else if (id == HIT_FF) {
         ui->action = PD_ACTION_TOGGLE_FF;
     } else if (id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
@@ -216,15 +416,20 @@ static void act(struct pd_ui* ui, int id) {
         ui->bagScroll = 0;
     } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
         ui->bagSelected = id - HIT_BAG_ROW;
-    } else if (id >= HIT_SETTING && id <= HIT_SETTING + SETTING_LEAVE) {
-        static const enum pd_overlay OPENS[] = {
+    } else if (id >= HIT_SETTING && id < HIT_SETTING + SETTING_COUNT) {
+        // The two pages of their own, then the rows that open an overlay.
+        static const enum pd_overlay OPENS[SETTING_COUNT] = {
             [SETTING_SCREEN] = PD_OVERLAY_PICK_SCREEN,
             [SETTING_FF] = PD_OVERLAY_PICK_FF,
             [SETTING_SAVE_STATE] = PD_OVERLAY_CONFIRM_SAVE,
             [SETTING_LOAD_STATE] = PD_OVERLAY_CONFIRM_LOAD,
             [SETTING_LEAVE] = PD_OVERLAY_CONFIRM_LEAVE,
         };
-        ui->overlay = OPENS[id - HIT_SETTING];
+        switch (id - HIT_SETTING) {
+        case SETTING_TAB_BAR: ui->settingsPage = PD_SETTINGS_TABS; break;
+        case SETTING_TWEAKS: ui->settingsPage = PD_SETTINGS_TWEAKS; break;
+        default: ui->overlay = OPENS[id - HIT_SETTING]; break;
+        }
     }
 }
 
@@ -277,17 +482,25 @@ bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down) {
 
 void pd_ui_next_tab(struct pd_ui* ui, int dir) {
     if (ui->overlay != PD_OVERLAY_NONE) return;
-    // The bar's order, then the gear.
-    enum pd_tab order[BAR_TABS + 1];
-    int at = 0;
-    for (int i = 0; i < BAR_TABS; i++) {
-        order[i] = slot_tab(ui, i);
-        if (order[i] == ui->tab) at = i;
+    // Nothing to step along before the first draw built the bar.
+    if (!ui->barCount) return;
+    // The bar's chips, then MORE, then the gear; a tab MORE holds steps as
+    // MORE does, since that is where its chip is (the app's barIndex).
+    enum pd_tab order[PD_BAR_TABS + 3];
+    int n = 0, at = 0;
+    for (int i = 0; i < ui->barCount; i++) {
+        order[n] = ui->bar[i];
+        if (order[n] == ui->tab) at = n;
+        n++;
     }
-    order[BAR_TABS] = PD_TAB_SETTINGS;
-    if (ui->tab == PD_TAB_SETTINGS || ui->tab == PD_TAB_CARD) at = BAR_TABS;
-    ui->tab = order[(at + BAR_TABS + 1 + dir) % (BAR_TABS + 1)];
-    ui->summarySlot = -1;
+    if (ui->moreCount) {
+        order[n] = PD_TAB_MORE;
+        if (ui->tab == PD_TAB_MORE || tab_in_more(ui, ui->tab)) at = n;
+        n++;
+    }
+    order[n++] = PD_TAB_SETTINGS;
+    if (ui->tab == PD_TAB_SETTINGS) at = n - 1;
+    ui_open_tab(ui, order[(at + n + dir) % n]);
 }
 
 bool pd_ui_back(struct pd_ui* ui) {
@@ -295,6 +508,11 @@ bool pd_ui_back(struct pd_ui* ui) {
     if (ui->overlay == PD_OVERLAY_GUIDE_NOTICE) return ui_guide_act(ui, HIT_NOTICE_BACK);
     if (ui->overlay != PD_OVERLAY_NONE) {
         ui->overlay = PD_OVERLAY_NONE;
+        return true;
+    }
+    // A page of SETTINGS' own goes back to its option list.
+    if (ui->tab == PD_TAB_SETTINGS && ui->settingsPage != PD_SETTINGS_HOME) {
+        ui->settingsPage = PD_SETTINGS_HOME;
         return true;
     }
     if (ui->summarySlot >= 0) {
@@ -319,10 +537,6 @@ bool pd_ui_back(struct pd_ui* ui) {
         ui->mapSel = ui->mapDungeon = ui->mapPage = -1;
         return true;
     }
-    if (ui->tab == PD_TAB_CARD) {
-        ui->tab = PD_TAB_SETTINGS;
-        return true;
-    }
     if (ui->tab == PD_TAB_BATTLE && ui->battlePane) {
         ui->battlePane = 0;
         return true;
@@ -334,6 +548,17 @@ bool pd_ui_back(struct pd_ui* ui) {
     if (ui->tab == PD_TAB_GUIDE && ui->guideOpen >= 0) {
         ui->guideOpen = -1;
         ui->guideLevel = 0;
+        return true;
+    }
+    // BACK from a tab MORE opened returns there (the app), after the tab's own
+    // pages had their turn above. The TRAINER CARD without a chip of its own
+    // keeps SETTINGS as its way out: that is where its chip sits.
+    if (tab_in_more(ui, ui->tab)) {
+        ui_open_tab(ui, PD_TAB_MORE);
+        return true;
+    }
+    if (ui->tab == PD_TAB_CARD && !pd_tab_shown(ui->settings, PD_TAB_CARD)) {
+        ui_open_tab(ui, PD_TAB_SETTINGS);
         return true;
     }
     return false;

@@ -3,8 +3,8 @@
 An SDL2 port of PokeDaisy for one-screen Linux handhelds. The target is
 **ArkOS4Clone on the R36S** (Rockchip RK3326, 640x480); the same binary runs in a
 window on a desktop, which is where the development happens. The companion is
-the portable C core from [`3ds/core`](../3ds/core), unchanged and shared with
-the 3DS port, so both ports read and draw the game the same way.
+the portable C core from [`3ds/core`](../3ds/core), unchanged, so every part of
+the app is read and drawn the same way.
 
 `README.md` says what the port does today; this file says what comes next and
 in which order. The row by row inventory of the app's features against both
@@ -84,7 +84,7 @@ frame turned out to be idle, so drawing over the game is affordable.
 
 The app's companion has more than the portable core reads and draws. These are
 read-only features — no writes into the running game — so they are safe to do
-before anything that acts on the game, and they land on the 3DS too.
+before anything that acts on the game.
 
 1. **DEX sections** (`3ds/core/pd_dex.c`, `pd_ui_dex.c`): the app's INFO / EVOLVE /
    AREA / MOVES pages (`DexDetailPages.kt`, `DexDetails.kt`). The ROM addresses
@@ -104,8 +104,7 @@ before anything that acts on the game, and they land on the 3DS too.
    for the party list; the extra fields come out of the same 100 bytes.
 3. **STATES: more slots and thumbnails** (`linux/state.c`, `files.c`, the
    companion's SETTINGS): the app keeps ten slots with screenshots. This one is
-   host-side (the 3DS keeps its single slot until its own screen is designed for
-   a grid), so it does not touch `3ds/core`.
+   host-side, so it does not touch `3ds/core`.
 4. **The port's own text in other languages**: the app's strings are translated
    (`app/.../companion/i18n/`); the core's ~80 labels are English only. A
    generated table keeps the two in step. The GUIDE's page text is separate
@@ -137,9 +136,9 @@ make -C 3ds tables
 ```
 
 Run it after changing anything in `app/src/main/kotlin/.../companion/data/`, or
-the ports will disagree with the app about the games.
+the port will disagree with the app about the games.
 
-That is also how an upstream update reaches the ports: new guide pages, renamed
+That is also how an upstream update reaches the port: new guide pages, renamed
 items, a corrected address or a new game's tables are regenerated into C, and CI
 (`Generated tables in sync with the app`) fails when someone merged an app change
 without re-running the generators. The generators read the Kotlin sources, so a

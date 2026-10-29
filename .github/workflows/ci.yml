@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 jobs:
-  # The 3DS/Linux port reads the app's tables through generated C
+  # The port reads the app's tables through generated C
   # (3ds/core/*_gen.c). Upstream moves those Kotlin tables now and then - item
   # descriptions, for one, went from a bundled table to the ROM - so the
   # generators have to be re-run in the same commit. This fails when they aren't,

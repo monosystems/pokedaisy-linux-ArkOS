@@ -22,7 +22,9 @@ static const struct hp_colors HP_RED = { 0xC63900, 0xFF7331 };
 
 static void add(struct pd_ui* ui, int x, int y, int w, int h, int id, bool scroll) {
     if (ui->hitCount >= PD_UI_MAX_HITS) return;
-    ui->hits[ui->hitCount++] = (struct pd_hit) { x, y, w, h, id, scroll };
+    // While a tab slides in, its controls are drawn off their usual place:
+    // their hits move with them.
+    ui->hits[ui->hitCount++] = (struct pd_hit) { x + ui->hitDx, y, w, h, id, scroll };
 }
 
 void ui_add_hit(struct pd_ui* ui, int x, int y, int w, int h, int id) {

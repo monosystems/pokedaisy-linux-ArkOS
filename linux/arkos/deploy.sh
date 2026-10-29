@@ -65,9 +65,8 @@ Options:
   --host USER@HOST   the handheld's ssh address (or PD_HOST / deploy.conf)
   --local DIR        copy to a mounted card instead of over ssh: DIR is the
                      pokedaisy folder (e.g. /Volumes/EASYROMS/ports/pokedaisy);
-                     the file keeps its name (pokedaisy, pokedaisy.3dsx)
-  --binary FILE      what to copy (default build-arm64/pokedaisy; use
-                     3ds/ctr/pokedaisy.3dsx for a mounted 3DS card)
+                     the file keeps its name (pokedaisy)
+  --binary FILE      what to copy (default build-arm64/pokedaisy)
   --rom FILE         after copying, play this game (a device path, or a name in
                      the ROMs folder); stops EmulationStation meanwhile
   --run              after copying, open the game list instead of a ROM
@@ -226,14 +225,14 @@ esac
 if command -v file >/dev/null 2>&1; then
   if ! file "$binary" | grep -q 'ELF 64-bit.*aarch64'; then
     if [ -n "$local_dest" ]; then
-      echo "!! $binary is not an aarch64 ELF (a .3dsx?): copying it anyway" >&2
+      echo "!! $binary is not an aarch64 ELF: copying it anyway" >&2
     else
       die "$binary is not an aarch64 ELF (the desktop build?) - use --build"
     fi
   fi
 fi
-# Only the Linux binary comes from --build; a 3DS .3dsx is built by
-# `make -C 3ds 3ds`, so the "sources are newer" hint would be wrong there.
+# Only linux/arkos/build.sh produces the binary --build installs, so the
+# "sources are newer" hint is about that one.
 if [ "$binary" = "$root/build-arm64/pokedaisy" ]; then
   newer=$(find "$root/3ds/core" "$root/linux" \( -name '*.c' -o -name '*.h' \) -newer "$binary" -print -quit 2>/dev/null || true)
   if [ -n "$newer" ]; then

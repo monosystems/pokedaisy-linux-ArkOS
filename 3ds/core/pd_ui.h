@@ -28,9 +28,15 @@ enum pd_tab {
     PD_TAB_DEX,
     PD_TAB_BATTLE,
     PD_TAB_SETTINGS,
-    PD_TAB_CARD, // the TRAINER CARD: no chip, it opens from SETTINGS
+    PD_TAB_CARD, // the TRAINER CARD: off the bar until TAB BAR puts it on, else from SETTINGS
+    PD_TAB_MORE, // the chip left of the gear: the game's tabs the bar has no room for
     PD_TAB_COUNT,
 };
+
+// The game's own chips on the bar - the app's MAX_BAR_TABS. A battle takes one
+// of their places for its own chip, which is why BATTLE leads the bar then and
+// the last tab it pushed off opens from MORE.
+#define PD_BAR_TABS 5
 
 // How the game fills the top screen.
 enum pd_screen_mode {
@@ -43,11 +49,50 @@ enum pd_screen_mode {
 #define PD_FF_MIN 2
 #define PD_FF_MAX 4
 
+// SETTINGS > TWEAKS, the app's CompanionTweaks: small on / off preferences for
+// the companion's motion and habits, each on by default.
+enum pd_tweak {
+    PD_TWEAK_PARTY_ICONS, // the party icon's two-frame bounce
+    PD_TWEAK_MAP_CURSOR,  // the MAP cursor swapping between its two sizes
+    PD_TWEAK_TAB_ANIM,    // a tab sliding in instead of cutting
+    PD_TWEAK_JUMP_BATTLE, // a battle opening BATTLE by itself
+    PD_TWEAK_COUNT,
+};
+
+// SETTINGS > TAB BAR (the app's COMPANION_TABS): a bit per tab the player put
+// on the bar. The game's other tabs fill the places left over, and what still
+// has no room opens from MORE.
+#define PD_TAB_BIT(tab) (1u << (unsigned) (tab))
+#define PD_TWEAK_BIT(tweak) (1u << (unsigned) (tweak))
+#define PD_TABS_DEFAULT \
+    (PD_TAB_BIT(PD_TAB_PARTY) | PD_TAB_BIT(PD_TAB_DEX) | PD_TAB_BIT(PD_TAB_MAP) | \
+     PD_TAB_BIT(PD_TAB_BAG) | PD_TAB_BIT(PD_TAB_GUIDE))
+#define PD_TWEAKS_DEFAULT ((1u << PD_TWEAK_COUNT) - 1)
+
 // What the player set; the host loads and saves it (pd_settings.h).
 struct pd_settings {
     int screenMode; // enum pd_screen_mode
     int ffSpeed;    // PD_FF_MIN..PD_FF_MAX
     int guideNotice; // a bit per game kind whose GUIDE notice was accepted
+    unsigned tabsShown; // a bit per enum pd_tab: the player's pick of the bar
+    unsigned tweaks;    // a bit per enum pd_tweak: on
+};
+
+// Whether the player left [t] on (SETTINGS > TWEAKS).
+static inline bool pd_tweak_on(const struct pd_settings* s, enum pd_tweak t) {
+    return s && (s->tweaks & PD_TWEAK_BIT(t)) != 0;
+}
+
+// Whether the player put [t] on the bar (SETTINGS > TAB BAR).
+static inline bool pd_tab_shown(const struct pd_settings* s, enum pd_tab t) {
+    return s && (s->tabsShown & PD_TAB_BIT(t)) != 0;
+}
+
+// SETTINGS' own pages: the option list, and the two the app opens from it.
+enum pd_settings_page {
+    PD_SETTINGS_HOME,
+    PD_SETTINGS_TABS,   // C-03: which tabs the bar holds
+    PD_SETTINGS_TWEAKS, // C-07: the companion's small switches
 };
 
 enum pd_action {
@@ -84,6 +129,7 @@ enum pd_overlay {
     PD_OVERLAY_CONFIRM_SAVE,
     PD_OVERLAY_CONFIRM_LOAD,
     PD_OVERLAY_CONFIRM_LEAVE,
+    PD_OVERLAY_TABS_FULL,    // TAB BAR: no place left for another chip
     PD_OVERLAY_PLACES,       // the MAP's list of places
     PD_OVERLAY_GUIDE_NOTICE, // the GUIDE's "AI-written, may be wrong" notice
 };
@@ -91,8 +137,27 @@ enum pd_overlay {
 struct pd_ui {
     enum pd_tab tab;
     enum pd_tab tabBeforeBattle; // the tab a battle took over from
-    int battleSlot;              // the bar slot BATTLE shows in, -1 = none
     bool battleWasOn;
+    // The bar, filled in on every draw from what this game has (C-04): the
+    // chips' tabs in the order drawn - BATTLE leads a battle - and the game's
+    // tabs that didn't fit, which MORE's page opens.
+    enum pd_tab bar[PD_BAR_TABS + 1];
+    int barCount;
+    enum pd_tab more[PD_TAB_COUNT];
+    int moreCount;
+    // How many of the player's picks this game has (the TAB BAR page's "n/5",
+    // and what decides whether another chip still fits).
+    int tabsPicked;
+    // The tab just opened slides in for a moment (TWEAKS): ms left, and the
+    // side it comes from (+1 the bar's right, -1 its left). hitDx is the same
+    // shift for the hits the tab body records, so a press lands on what the
+    // player sees.
+    int tabSlideMs, tabSlideDir, hitDx;
+    // Time passing, for the party icon's two frames: since the start, and how
+    // much of the fastest frame's 60 ms went by.
+    unsigned animMs, iconMs;
+    // SETTINGS: the page shown (the option list, or one of its own pages).
+    enum pd_settings_page settingsPage;
     // BATTLE: INFO (0) or SUGGESTIONS (1); the FOE TEAM's slots seen so far
     // this battle (a bit each), the one tapped (-1 = follow the battle) and
     // the one shown (set by the draw); what the last read said was out / next.
