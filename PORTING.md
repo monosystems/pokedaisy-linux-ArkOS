@@ -257,10 +257,10 @@ that frame.
 | C-G-04 | `HERE`: wild Pokémon per method, levels and odds, `???` until tapped | `guide.md` | ✅ | Read from `gWildMonHeaders`. |
 | C-G-05 | `HERE`: `PEOPLE` (gifts, eggs, trades) | `guide.md` | ✅ |  |
 | C-G-06 | `HERE`: `ITEMS`, hidden ones behind a hint, a ball when done | `guide.md` | ✅ | The ball marks come from the save's flags. |
-| C-G-07 | `BOSS`: the next unbeaten gym, Elite Four or champion with the team | `guide.md` | ◐ | The app opens on the next boss and lists the following ones below as headers (V-16); the port shows the next one only. `pd_guide.c` checks it against the save's badges. |
+| C-G-07 | `BOSS`: the next unbeaten gym, Elite Four or champion with the team | `guide.md` | ✅ | The page opens on the next unbeaten boss (`NEXT:` in its heading, checked against the save's badges) and lists the following ones below it as sections of their own - with their teams, where the app shows the headers only (V-16), up to four. |
 | C-G-08 | `ALL DONE` when every boss is beaten | `guide.md` | ✅ | Drawn as `ALL BEATEN`. |
 | C-G-09 | Several teams per boss (difficulty, rematch) | `guide.md` | — | Only the retail games' single teams are generated. `M` |
-| C-G-10 | The `EVOLUTIONS` page | `guide.md` | — | Shares C-D-08; the party comes first. `S` |
+| C-G-10 | The `EVOLUTIONS` page | `guide.md` | ✅ | The last page (`build_evolutions` in `pd_ui_guide.c`): `YOUR PARTY` first, one entry per kind on the team (its kinds as the hint, `LV 16 -> IVYSAUR` as the answer, `Doesn't evolve.` where nothing comes), then `SPECIAL EVOLUTIONS` for every kind whose step isn't a plain level-up. Reads the same table C-D-08 does (`pd_dex_evolutions`). |
 | C-G-11 | Day and night variants (Lazarus, Polished Crystal) | `guide.md` | — | Both are Game Boy or hack only, so it follows S-02 and S-06. |
 | C-G-12 | A `WHERE IS` built from the maps for hacks | `guide.md` | — | Follows S-06. |
 | C-G-13 | The first-open `BEFORE YOU READ` notice, once per game | `guide.md` | ✅ | `guideNotice` in the settings, a bit per game kind. |

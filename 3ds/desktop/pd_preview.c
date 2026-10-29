@@ -405,6 +405,10 @@ int main(int argc, char** argv) {
             shot(out, name, "settings-tabs-full", px);
             printf("picked %d/%d, tabs 0x%02x\n", ui.tabsPicked, PD_BAR_TABS, settings.tabsShown);
             tap(&p, HIT_YES, 0);
+            // Back to the bar this run started with (CARD out, GUIDE in), so the
+            // sections below still find their chips.
+            tap(&p, HIT_SETTINGS_TAB + PD_TAB_CARD, 0);
+            tap(&p, HIT_SETTINGS_TAB + PD_TAB_GUIDE, 0);
         }
         tap(&p, HIT_SETTINGS_BACK, 0);
         shot(out, name, "settings-picked", px);
@@ -499,8 +503,8 @@ int main(int argc, char** argv) {
         shot(out, name, "guide", px);
         if (has_hit(&p, HIT_NOTICE_OK)) {
             tap(&p, HIT_NOTICE_OK, 0);
-            static const char* const PAGE_SHOTS[] = { "guide-p0", "guide-p1", "guide-p2", "guide-p3", "guide-p4" };
-            for (int page = 0; page < 5 && has_hit(&p, HIT_GUIDE_PAGE + page); page++) {
+            static const char* const PAGE_SHOTS[] = { "guide-p0", "guide-p1", "guide-p2", "guide-p3", "guide-p4", "guide-p5" };
+            for (int page = 0; page < 6 && has_hit(&p, HIT_GUIDE_PAGE + page); page++) {
                 tap(&p, HIT_GUIDE_PAGE + page, 0);
                 shot(out, name, PAGE_SHOTS[page], px);
                 if (has_hit(&p, HIT_GUIDE_LIST)) {

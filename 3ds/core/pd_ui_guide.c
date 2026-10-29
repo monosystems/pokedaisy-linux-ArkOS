@@ -35,7 +35,7 @@ struct view_section {
     int first, count;
 };
 
-enum page_kind { PAGE_HERE, PAGE_BOSS, PAGE_STATIC };
+enum page_kind { PAGE_HERE, PAGE_BOSS, PAGE_STATIC, PAGE_EVOLUTIONS };
 struct page_ref {
     enum page_kind kind;
     int index; // the guide's page, for PAGE_STATIC
@@ -85,6 +85,10 @@ static void build_pages(const struct pd_game* g, const struct pd_snapshot* s, co
     if (rom && s->flagsOk && gd->bossCount) pages[pageCount++] = (struct page_ref) { PAGE_BOSS, 0, "BOSS" };
     for (int i = 0; i < gd->pageCount && pageCount < MAX_PAGES; i++) {
         pages[pageCount++] = (struct page_ref) { PAGE_STATIC, i, page_label(gd->pages[i].title) };
+    }
+    // The app's last page: what your team becomes (C-G-10).
+    if (pd_dex_has_evolutions(g) && pageCount < MAX_PAGES) {
+        pages[pageCount++] = (struct page_ref) { PAGE_EVOLUTIONS, 0, "EVOLUTIONS" };
     }
 }
 
@@ -253,6 +257,66 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
     }
 }
 
+// One species' evolutions as the app's EVOLUTIONS entry: the kinds as the hint,
+// every step with its condition and its target as the answer.
+static void evolution_entry(const struct pd_game* g, int species) {
+    struct pd_evo_link links[PD_EVO_MAX];
+    int n = pd_dex_evolutions(g, species, links, PD_EVO_MAX);
+    struct view_entry* e = add_entry();
+    if (!e) return;
+    char name[40];
+    snprintf(e->title, sizeof(e->title), "%s", pd_species_name(species, name, sizeof(name)));
+    if (n <= 0) {
+        snprintf(e->answerBuf, sizeof(e->answerBuf), "Doesn't evolve.");
+        e->answer = e->answerBuf;
+        return;
+    }
+    int len = 0, hintLen = 0;
+    e->hintBuf[0] = 0;
+    for (int i = 0; i < n; i++) {
+        char how[64], to[40];
+        const char* kind = pd_evo_kind(links[i].method);
+        // The hint: each kind once ("TRADE / USE AN ITEM").
+        if (!strstr(e->hintBuf, kind) && hintLen < (int) sizeof(e->hintBuf)) {
+            hintLen += snprintf(e->hintBuf + hintLen, sizeof(e->hintBuf) - (size_t) hintLen, "%s%s",
+                                hintLen ? " / " : "", kind);
+        }
+        len += snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, "%s%s -> %s", i ? " / " : "",
+                        pd_evo_how(g, links[i].method, links[i].param, how, sizeof(how)),
+                        pd_species_name(links[i].to, to, sizeof(to)));
+        if (len >= (int) sizeof(e->answerBuf)) break;
+    }
+    e->hint = e->hintBuf;
+    e->answer = e->answerBuf;
+}
+
+// C-G-10: the party first, then every kind with a step that isn't a plain
+// level-up (the app's YOUR PARTY / SPECIAL EVOLUTIONS).
+static void build_evolutions(const struct pd_game* g, const struct pd_snapshot* s) {
+    add_section("YOUR PARTY", "What your team becomes, and how");
+    bool any = false;
+    for (int i = 0; i < s->partyCount; i++) {
+        if (s->party[i].species == PD_SPECIES_EGG) continue;
+        bool twice = false;
+        for (int k = 0; k < i; k++) twice |= s->party[k].species == s->party[i].species;
+        if (twice) continue;
+        evolution_entry(g, s->party[i].species);
+        any = true;
+    }
+    if (!any) add_entry(); // an egg-only or empty party still says something
+    add_section("SPECIAL EVOLUTIONS", "The kinds a trade, an item or a friend changes");
+    for (int species = 1; species < PD_SPECIES_EGG; species++) {
+        struct pd_evo_link links[PD_EVO_MAX];
+        int n = pd_dex_evolutions(g, species, links, PD_EVO_MAX);
+        if (n <= 0) continue;
+        bool special = false;
+        for (int i = 0; i < n; i++) special |= !pd_evo_plain_level(links[i].method);
+        if (special) evolution_entry(g, species);
+    }
+}
+
+// The next unbeaten bosses, with their teams (C-G-07): the following ones after
+// the next are drawn as headers of their own.
 static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_guide* gd) {
     int best = 0;
     for (int i = 0; i < s->partyCount; i++) {
@@ -393,22 +457,25 @@ void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     build_pages(g, s, gd);
     if (ui->guidePage < 0 || ui->guidePage >= pageCount) ui->guidePage = 0;
 
-    // The page chips.
-    int w = (c->w - MARGIN * (pageCount + 1)) / pageCount;
+    // The page chips: as wide as their labels need, so a long one
+    // (EVOLUTIONS) still fits the row.
+    int cx = MARGIN;
     for (int i = 0; i < pageCount; i++) {
-        int x = MARGIN + i * (w + MARGIN);
+        int w = pd_text_width(pages[i].label) + 12;
         bool open = ui->guidePage == i;
-        pd_title_box(c, x, CONTENT_Y, w, CHIP_H, open || ui->pressedId == HIT_GUIDE_PAGE + i ? PD_TITLE_FILL : PD_LIST_FILL);
+        pd_title_box(c, cx, CONTENT_Y, w, CHIP_H, open || ui->pressedId == HIT_GUIDE_PAGE + i ? PD_TITLE_FILL : PD_LIST_FILL);
         int tw = pd_text_width(pages[i].label);
-        pd_text(c, x + (w - tw) / 2, pd_text_y(CONTENT_Y, CHIP_H), pages[i].label, open ? PD_VALUE : PD_TITLE_TEXT,
+        pd_text(c, cx + (w - tw) / 2, pd_text_y(CONTENT_Y, CHIP_H), pages[i].label, open ? PD_VALUE : PD_TITLE_TEXT,
                 open ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
-        ui_add_hit(ui, x, CONTENT_Y, w, CHIP_H, HIT_GUIDE_PAGE + i);
+        ui_add_hit(ui, cx, CONTENT_Y, w, CHIP_H, HIT_GUIDE_PAGE + i);
+        cx += w + 4;
     }
 
     entryCount = sectionCount = 0;
     const struct page_ref* p = &pages[ui->guidePage];
     if (p->kind == PAGE_HERE) build_here(g, s, gd);
     else if (p->kind == PAGE_BOSS) build_bosses(g, s, gd);
+    else if (p->kind == PAGE_EVOLUTIONS) build_evolutions(g, s);
     else build_static(g, s, &gd->pages[p->index]);
     if (ui->guideOpen >= entryCount) ui->guideOpen = -1;
 

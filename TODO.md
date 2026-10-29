@@ -117,8 +117,16 @@ carries no per-game risk. About 29 rows, roughly +13 points.
       its window. `BATTLE HINTS` (TWEAKS, until SETTINGS gets the app's groups)
       drops the verdicts, the best pick's verdict and the matchups. The preview
       shoots `-battle-scrolled` and `-battle-nohints`.*
-- [ ] **P1.12 Guide: more of the app.** The `EVOLUTIONS` page, and the bosses after
+- [x] **P1.12 Guide: more of the app.** The `EVOLUTIONS` page, and the bosses after
       the next one as headers. (C-G-10, C-G-07)
+      *Done: the guide's last page is `EVOLUTIONS` (`build_evolutions`), the party
+      first and then every kind with a step that isn't a plain level-up, read
+      through `pd_dex_evolutions`. The `BOSS` page already opened on the next
+      unbeaten one and listed the following ones as sections - PORTING's row now
+      says so. The preview shoots the page as `-guide-p5`; the 6th chip needed the
+      chip row to size itself by its labels, and the preview's TAB BAR step now
+      puts the bar back (it had been hiding GUIDE, which had left the guide's
+      shots stale since P1.2).*
 - [ ] **P1.13 Settings as the app has it.** Groups and pages instead of one column,
       plus `RESTART GAME` and the resume wording on `LEAVE GAME`. (C-SET-01,
       C-SET-04)

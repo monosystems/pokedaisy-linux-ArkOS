@@ -353,3 +353,49 @@ int pd_dex_tm_move(const struct pd_game* g, int item) {
     if (u16(t) != cfg->probeTmMove || u16(t + 50 * 2) != cfg->probeHmMove) return 0;
     return u16(t + (item - TM01_ITEM) * 2);
 }
+
+// The app's evolutionKind: what sort of step an evolution is.
+const char* pd_evo_kind(int method) {
+    switch (method) {
+    case EVO_LEVEL:
+    case EVO_LEVEL_NINJASK:
+        return "LEVEL UP";
+    case EVO_LEVEL_ATK_GT_DEF:
+    case EVO_LEVEL_ATK_EQ_DEF:
+    case EVO_LEVEL_ATK_LT_DEF:
+        return "LEVEL UP (STATS)";
+    case EVO_LEVEL_SILCOON:
+    case EVO_LEVEL_CASCOON:
+        return "LEVEL UP (RANDOM)";
+    case EVO_LEVEL_SHEDINJA:
+        return "LEVEL UP (BONUS)";
+    case EVO_FRIENDSHIP:
+    case EVO_FRIENDSHIP_DAY:
+    case EVO_FRIENDSHIP_NIGHT:
+        return "FRIENDSHIP";
+    case EVO_TRADE:
+    case EVO_TRADE_ITEM:
+        return "TRADE";
+    case EVO_ITEM:
+        return "USE AN ITEM";
+    case EVO_BEAUTY:
+        return "BEAUTY";
+    default:
+        return "SPECIAL";
+    }
+}
+
+bool pd_evo_plain_level(int method) {
+    return method == EVO_LEVEL;
+}
+
+int pd_dex_evolutions(const struct pd_game* g, int species, struct pd_evo_link* out, int max) {
+    build_evolutions(g);
+    if (!evoOk) return -1;
+    if (species < 1 || species >= SPECIES_COUNT || max <= 0) return 0;
+    int n = 0;
+    for (int i = 0; i < EVO_PER_MON && n < max; i++) {
+        if (evo_link(species, i, &out[n])) n++;
+    }
+    return n;
+}

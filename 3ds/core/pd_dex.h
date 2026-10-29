@@ -51,6 +51,15 @@ int pd_dex_family(const struct pd_game* g, int species, struct pd_evo_link* out,
 // An evolution's requirements in plain words: "LV 16", "Trade holding METAL
 // COAT", "Level up, high friendship, by day" (the app's evolutionHow).
 const char* pd_evo_how(const struct pd_game* g, int method, int param, char* buf, size_t len);
+// What kind of step it is, in the app's words ("LEVEL UP", "TRADE", "USE AN
+// ITEM", "FRIENDSHIP", ...) - the guide's EVOLUTIONS page hint.
+const char* pd_evo_kind(int method);
+// Whether the step is a plain level-up (the app's isPlainLevel) - the test for
+// the EVOLUTIONS page's "special" list.
+bool pd_evo_plain_level(int method);
+// [species]' own evolutions (what it becomes and how), in the table's order;
+// -1 when the ROM has no table this port can read.
+int pd_dex_evolutions(const struct pd_game* g, int species, struct pd_evo_link* out, int max);
 // The front sprite, 64x64 0xRRGGBB with PD_MAP_CLEAR-style see-through
 // (0xFF000000); false if it can't be decoded.
 bool pd_dex_sprite(const struct pd_game* g, int species, uint32_t* out);
