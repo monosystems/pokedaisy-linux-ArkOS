@@ -30,8 +30,10 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
 - Settings kept in `sdmc:/pokedaisy/settings.ini`.
 - The companion, in the app's FireRed OPTION-screen look:
   - **PARTY**: the six slots (the game's own icon from your ROM, name with its
-    ♂ / ♀, level, HP bar, status) in the app's FireRed party palette; tap one
-    for its summary (moves, type, PP).
+    ♂ / ♀, level, HP bar, status, and the item it holds) in the app's FireRed
+    party palette; tap one for its summary - its moves, its `STATS` (IVs, EVs,
+    nature, Hidden Power) and its `MATCHUPS` (WEAK TO / RESISTS / IMMUNE TO), on
+    three pages under its HP and EXP bars.
   - **BATTLE**: opens by itself in a battle and goes back after it. **INFO**:
     the foe and you (with the game's own party icons, read from your ROM),
     your moves with the app's verdicts (SUPER 2x / NEUTRAL 1x / RESISTED 1/2x /

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_tables.h"
 #include "pd_ui_internal.h"
 
 #define HP_FRAME 0x525252
@@ -19,6 +20,20 @@ static const struct hp_colors HP_RED = { 0xC63900, 0xFF7331 };
 #define STATUS_FILL_SLP 0x8C8C94
 #define STATUS_FILL_BRN 0xE05030
 #define STATUS_FILL_FRZ 0x58A8D8
+
+// The summary's EXP bar blue (MonDetailScreen.kt's ExpBlue).
+#define EXP_FILL 0x40B8F8
+
+// AppColors.typeColors, by the games' own type ids: NORMAL to DARK, with the
+// unused ??? slot (9) in its own teal.
+static const uint32_t TYPE_COLORS[18] = {
+    0xA8A878, 0xC03028, 0xA890F0, 0xA040A0, 0xE0C068, 0xB8A038, 0xA8B820, 0x705898, 0xB8B8D0,
+    0x68A090, 0xF08030, 0x6890F0, 0x78C850, 0xF8D030, 0xF85888, 0x98D8D8, 0x7038F8, 0x705848,
+};
+
+uint32_t ui_type_color(int type) {
+    return type >= 0 && type < 18 ? TYPE_COLORS[type] : PD_MUTED;
+}
 
 static void add(struct pd_ui* ui, int x, int y, int w, int h, int id, bool scroll) {
     if (ui->hitCount >= PD_UI_MAX_HITS) return;
@@ -80,6 +95,38 @@ void ui_status_badge(struct pd_canvas* c, int x, int y, uint32_t status) {
     int w = pd_text_width(label) + 6;
     pd_round_rect(c, x, y, w, 14, 2, fill);
     pd_text(c, x + 3, y - 2, label, 0xFFFFFF, PD_NO_SHADOW);
+}
+
+int ui_type_chip_width(int type, const char* label) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%s%s%s", pd_type_name(type), label && *label ? " " : "", label ? label : "");
+    return pd_text_width(buf) + 6;
+}
+
+int ui_type_chip(struct pd_canvas* c, int x, int y, int type, const char* label) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%s%s%s", pd_type_name(type), label && *label ? " " : "", label ? label : "");
+    int w = pd_text_width(buf) + 6;
+    pd_round_rect(c, x, y, w, TYPE_CHIP_H, 2, ui_type_color(type));
+    pd_text(c, x + 3, y - 2, buf, 0xFFFFFF, PD_NO_SHADOW);
+    return w;
+}
+
+void ui_exp_bar(struct pd_canvas* c, int x, int y, int barW, uint32_t value, uint32_t start, uint32_t next) {
+    // The party HP bar's build, with EXP's three letters and its blue fill.
+    static const uint16_t EXP_TAG[5] = { 0x657, 0x554, 0x626, 0x454, 0x457 };
+    pd_fill(c, x, y, 16 + barW + 2, 7, HP_FRAME);
+    pd_bitmap(c, x + 2, y + 1, EXP_TAG, 5, HP_LABEL);
+    int bx = x + 15, by = y + 1;
+    pd_fill(c, bx, by, barW + 2, 5, 0xFFFFFF);
+    pd_fill(c, bx + 1, by + 1, barW, 3, HP_EMPTY);
+    int f = 0;
+    if (next > start && value > start) {
+        f = (int) ((value - start) * (uint32_t) barW / (next - start));
+        if (f == 0) f = 1;
+        if (f > barW) f = barW;
+    }
+    pd_fill(c, bx + 1, by + 1, f, 3, EXP_FILL);
 }
 
 void ui_notice(struct pd_canvas* c, const char* title, const char* line1, const char* line2) {

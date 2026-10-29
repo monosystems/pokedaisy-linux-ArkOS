@@ -56,6 +56,7 @@ enum {
     HIT_FOE_SLOT = 3010,   // + foe party index
     HIT_OPEN_CARD = 3100,
     HIT_CARD = 3101,
+    HIT_SUMMARY_PAGE = 3200, // + enum pd_summary_page: the summary's MOVES / STATS / MATCHUPS chips
 };
 
 enum setting_row {
@@ -94,7 +95,17 @@ void ui_add_scroll_hit(struct pd_ui* ui, int x, int y, int w, int h, int id);
 void ui_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label, int id);
 // The party menu's HP bar: a dark frame, the "HP" tag, a two-tone fill.
 void ui_hp_bar(struct pd_canvas* c, int x, int y, int barW, int hp, int maxHp);
+// The summary's EXP bar: the same build with an "EXP" tag, filled from
+// [start] (the level's first EXP) to [next] (the next level's).
+void ui_exp_bar(struct pd_canvas* c, int x, int y, int barW, uint32_t value, uint32_t start, uint32_t next);
 void ui_status_badge(struct pd_canvas* c, int x, int y, uint32_t status);
+// A type's colour (AppColors.typeColors), and its chip: the type's name in
+// white on that colour, with the multiplier after it when label isn't empty
+// ("ROCK 4x") - the app's TypeBadge / TypeBadgeWithLabel. Both return pixels.
+uint32_t ui_type_color(int type);
+#define TYPE_CHIP_H 14
+int ui_type_chip_width(int type, const char* label);
+int ui_type_chip(struct pd_canvas* c, int x, int y, int type, const char* label);
 // A message in a list window across the content area.
 void ui_notice(struct pd_canvas* c, const char* title, const char* line1, const char* line2);
 // A LABEL  VALUE row, the value from ~42% across (OptionLine).

@@ -65,3 +65,12 @@ void pd_species_type_pair(int species, int* t1, int* t2) {
     *t1 = pd_species_type_table[species][0];
     *t2 = pd_species_type_table[species][1];
 }
+
+int pd_exp_for_level(int species, int level) {
+    if (level < 0 || level >= PD_EXP_LEVELS) return -1;
+    // An unknown species takes the first curve, which is the fastest of the
+    // six - a guess that at least doesn't sail past the level.
+    int curve = species > 0 && species < pd_growth_rates_count ? pd_growth_rates[species] : 0;
+    if (curve >= PD_EXP_CURVES) curve = 0;
+    return pd_exp_tables[curve][level];
+}

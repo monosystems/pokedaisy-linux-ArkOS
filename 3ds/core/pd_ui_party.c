@@ -133,53 +133,252 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     }
 }
 
-static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m) {
+// --- the summary: its info block and its three pages (C-P-06 to C-P-09) ---
+
+// The body's rows: six 16px lines under the info block. The page chips and
+// BACK share the window's last row.
+#define SUM_ROW 16
+
+// A page chip (MOVES / STATS / MATCHUPS): white with red text when open, like
+// the POKéDEX's section chips.
+static void page_chip(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, const char* label, int page) {
+    bool open = ui->summaryPage == page;
+    pd_title_box(c, x, y, w, 22, open || ui->pressedId == HIT_SUMMARY_PAGE + page ? PD_TITLE_FILL : PD_LIST_FILL);
+    int tw = pd_text_width(label);
+    pd_text(c, x + (w - tw) / 2, pd_text_y(y, 22), label, open ? PD_VALUE : PD_TITLE_TEXT,
+            open ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
+    ui_add_hit(ui, x, y, w, 22, HIT_SUMMARY_PAGE + page);
+}
+
+// The app's formatMultiplier, in the letters the port's font has (no ½ or ¼).
+static void pct_label(int pct, char* buf, size_t len) {
+    if (pct == 25) snprintf(buf, len, "1/4x");
+    else if (pct == 50) snprintf(buf, len, "1/2x");
+    else if (pct % 100 == 0) snprintf(buf, len, "%dx", pct / 100);
+    else snprintf(buf, len, "%d%%", pct);
+}
+
+// An IV bar (the app's IvBar): a dark frame, the party bar's grey, the fill in
+// the HP colours and gold at a perfect 31.
+static void iv_bar(struct pd_canvas* c, int x, int y, int w, int iv) {
+    int pct = iv * 100 / PD_MAX_IV;
+    uint32_t fill = iv >= PD_MAX_IV ? 0xE8B830 : pct > 50 ? 0x60D048 : pct > 20 ? 0xF8C838 : 0xF04838;
+    pd_fill(c, x, y, w, 6, 0x293131);
+    pd_fill(c, x + 1, y + 1, w - 2, 4, 0x506858);
+    int f = (w - 2) * iv / PD_MAX_IV;
+    if (f > 0) pd_fill(c, x + 1, y + 1, f, 4, fill);
+}
+
+// The summary's top block: icon, name, gender (and the kind, for a nickname),
+// level, its types, its status, the HP bar and the EXP bar - the app's
+// InfoSection, a row tighter.
+static void summary_info(struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m, int ix, int iw, int ty) {
     char buf[40], buf2[40];
+    bool egg = m->species == PD_SPECIES_EGG;
+    const char* name = mon_display_name(m, buf, sizeof(buf));
+    int tx = ix;
+    if (pd_draw_mon_icon(c, g, m->species, ix - 2, ty + 2, !egg && m->hp == 0)) {
+        tx = ix - 2 + PD_ICON + 4;
+        iw -= tx - ix;
+    }
+    int nameW = pd_text(c, tx, ty, name, PD_LABEL, PD_LABEL_SHADOW);
+    if (egg) {
+        pd_text(c, tx, ty + 18, "It's an egg. It will hatch in time.", PD_MUTED, PD_MUTED_SHADOW);
+        return;
+    }
+    gender_mark(c, tx + nameW + 3, ty, m->gender);
+    char lv[12];
+    snprintf(lv, sizeof(lv), "Lv%d", m->level);
+    int lvW = pd_text_width(lv);
+    pd_text_right(c, tx + iw, ty, lv, PD_VALUE, PD_VALUE_SHADOW);
+    // A nickname of the player's own: the kind after it, like the game's summary.
+    const char* species = pd_species_name(m->species, buf2, sizeof(buf2));
+    int spx = tx + nameW + 14;
+    if (strcmp(species, name)) pd_text_fit(c, spx, ty, tx + iw - lvW - 8 - spx, species, PD_MUTED, PD_MUTED_SHADOW);
+    // The kind's types, with the status on the same row's right.
+    int t1, t2;
+    pd_species_type_pair(m->species, &t1, &t2);
+    int cx = tx;
+    if (t1 != PD_TYPE_NONE) cx += ui_type_chip(c, cx, ty + 18, t1, "") + 4;
+    if (t2 != PD_TYPE_NONE && t2 != t1) ui_type_chip(c, cx, ty + 18, t2, "");
+    const char* st = pd_status_label(m->status);
+    if (*st) ui_status_badge(c, tx + iw - pd_text_width(st) - 6, ty + 18, m->status);
+    // HP, then the EXP gained within this level (C-P-07): the app's NEXT, or
+    // MAX at level 100, from the species' own growth curve.
+    ui_hp_bar(c, tx, ty + 40, 96, m->hp, m->maxHp);
+    char hp[16];
+    snprintf(hp, sizeof(hp), "%d/%d", m->hp, m->maxHp);
+    pd_text_right(c, tx + iw, ty + 36, hp, PD_LABEL, PD_LABEL_SHADOW);
+    bool maxed = m->level >= 100;
+    long start = pd_exp_for_level(m->species, m->level);
+    long next = maxed ? -1 : pd_exp_for_level(m->species, m->level + 1);
+    if (start < 0 || (!maxed && next <= 0)) {
+        pd_text(c, tx, ty + 54, "EXP unknown", PD_MUTED, PD_MUTED_SHADOW);
+        return;
+    }
+    ui_exp_bar(c, tx, ty + 58, 96, m->experience, (uint32_t) start, (uint32_t) (maxed ? start + 1 : next));
+    char txt[24];
+    if (maxed) {
+        snprintf(txt, sizeof(txt), "MAX");
+    } else {
+        long left = next - (long) m->experience;
+        snprintf(txt, sizeof(txt), "NEXT %ld", left > 0 ? left : 0);
+    }
+    pd_text_right(c, tx + iw, ty + 54, txt, PD_LABEL, PD_LABEL_SHADOW);
+}
+
+// The four moves: name, its type, the PP left, as the app's MoveRow words it.
+static void summary_moves(struct pd_canvas* c, const struct pd_mon* m, int ix, int iw, int y) {
+    char buf[40];
+    for (int i = 0; i < PD_NUM_MOVES; i++) {
+        if (!m->moves[i]) continue;
+        pd_text_fit(c, ix, y, iw - 120, pd_move_name(m->moves[i], buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
+        pd_text(c, ix + iw - 116, y, pd_type_name(pd_move_type(m->moves[i])), PD_MUTED, PD_MUTED_SHADOW);
+        char pp[12];
+        snprintf(pp, sizeof(pp), "PP %d", m->pp[i]);
+        pd_text_right(c, ix + iw, y, pp, PD_VALUE, PD_VALUE_SHADOW);
+        y += 20; // the rows the summary had before its pages: four of them breathe
+    }
+}
+
+// C-P-09: the numbers behind the moves - each stat's value, its IV on a bar and
+// its EV, the nature's red up / blue down arrow on the stat it raises / lowers,
+// then the totals, the nature's name and the Hidden Power this mon's IVs give.
+// Two columns of three: one column of six would not fit.
+static void summary_stats(struct pd_canvas* c, const struct pd_mon* m, int ix, int iw, int y) {
+    static const char* const LABELS[PD_STAT_COUNT] = { "HP", "ATTACK", "DEFENSE", "SPEED", "SP. ATK", "SP. DEF" };
+    static const int COLUMNS[2][3] = {
+        { PD_STAT_HP, PD_STAT_ATK, PD_STAT_DEF },
+        { PD_STAT_SPATK, PD_STAT_SPDEF, PD_STAT_SPEED },
+    };
+    int up = pd_nature_raises(m->nature), down = pd_nature_lowers(m->nature);
+    int colW = (iw - 4) / 2;
+    int ivTotal = 0, evTotal = 0;
+    for (int s = 0; s < PD_STAT_COUNT; s++) {
+        ivTotal += m->ivs[s];
+        evTotal += m->evs[s];
+    }
+    char num[12];
+    for (int col = 0; col < 2; col++) {
+        int cx = ix + col * (colW + 4), right = cx + colW;
+        int barX = cx + 84, barW = 20, numX = cx + 120;
+        pd_text(c, cx, y, "STAT", PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_right(c, numX, y, "IV", PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_right(c, right, y, "EV", PD_MUTED, PD_MUTED_SHADOW);
+        for (int r = 0; r < 3; r++) {
+            int stat = COLUMNS[col][r], ry = y + SUM_ROW * (r + 1);
+            int labelW = pd_text(c, cx, ry, LABELS[stat], PD_LABEL, PD_LABEL_SHADOW);
+            // The nature's mark: a red up arrow or a blue down one (later
+            // games' colours), beside the stat it moves.
+            if (stat == up) pd_triangle(c, cx + labelW + 3, ry + 4, 5, PD_UP, 0xE04040);
+            if (stat == down) pd_triangle(c, cx + labelW + 3, ry + 6, 5, PD_DOWN, 0x3984F7);
+            snprintf(num, sizeof(num), "%d", m->stats[stat]);
+            pd_text_right(c, cx + 80, ry, num, PD_LABEL, PD_LABEL_SHADOW);
+            iv_bar(c, barX, ry + 5, barW, m->ivs[stat]);
+            snprintf(num, sizeof(num), "%d", m->ivs[stat]);
+            pd_text_right(c, numX, ry, num, PD_VALUE, PD_VALUE_SHADOW);
+            snprintf(num, sizeof(num), "%d", m->evs[stat]);
+            pd_text_right(c, right, ry, num, PD_VALUE, PD_VALUE_SHADOW);
+        }
+    }
+    // The totals under their columns, the nature beside them.
+    int ty = y + SUM_ROW * 4;
+    pd_text(c, ix, ty, "TOTAL", PD_LABEL, PD_LABEL_SHADOW);
+    snprintf(num, sizeof(num), "%d", ivTotal);
+    pd_text_right(c, ix + 120, ty, num, PD_VALUE, PD_VALUE_SHADOW);
+    snprintf(num, sizeof(num), "%d", evTotal);
+    pd_text_right(c, ix + colW, ty, num, PD_VALUE, PD_VALUE_SHADOW);
+    int nx = ix + colW + 4;
+    pd_text(c, nx, ty, "NATURE", PD_MUTED, PD_MUTED_SHADOW);
+    pd_text(c, nx + 46, ty, pd_nature_name(m->nature), PD_LABEL, PD_LABEL_SHADOW);
+    // HIDDEN POWER: the type and the power these IVs give it.
+    ty += SUM_ROW;
+    pd_fill(c, ix, ty - 4, iw, 1, PD_DIVIDER);
+    pd_text(c, ix, ty + 2, "HIDDEN POWER", PD_LABEL, PD_LABEL_SHADOW);
+    int chipW = ui_type_chip(c, ix + 90, ty + 3, pd_hidden_power_type(m), "");
+    snprintf(num, sizeof(num), "PWR %d", pd_hidden_power_power(m));
+    pd_text(c, ix + 90 + chipW + 6, ty + 2, num, PD_VALUE, PD_VALUE_SHADOW);
+}
+
+// C-P-08: WEAK TO / RESISTS / IMMUNE TO, each heading level with its chips, a
+// chip carrying the type's name and the multiplier - the app's MatchupGroup in
+// its inline form. A group with nothing in it stays off the page.
+static void summary_matchups(struct pd_canvas* c, const struct pd_mon* m, int ix, int iw, int y, int h) {
+    int t1, t2;
+    pd_species_type_pair(m->species, &t1, &t2);
+    if (t1 == PD_TYPE_NONE) {
+        pd_text(c, ix, y, "This kind's types aren't known.", PD_MUTED, PD_MUTED_SHADOW);
+        return;
+    }
+    // Every real attacking type that isn't neutral (the app's typeMatchups,
+    // ??? passed over): the strongest weaknesses first and the weakest
+    // resistances first, in the game's type order within one multiplier.
+    static const unsigned char TYPES[17] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17 };
+    int list[3][17], count[3] = { 0, 0, 0 };
+    for (int k = 0; k < 17; k++) {
+        int pct = pd_type_multiplier_pct(TYPES[k], t1, t2);
+        if (pct == 100) continue;
+        int g = pct == 0 ? 2 : pct > 100 ? 0 : 1;
+        int at = count[g]++;
+        while (at > 0 && g != 2) {
+            int before = pd_type_multiplier_pct(list[g][at - 1], t1, t2);
+            if (g == 0 ? before >= pct : before <= pct) break;
+            list[g][at] = list[g][at - 1];
+            at--;
+        }
+        list[g][at] = TYPES[k];
+    }
+    static const char* const HEADINGS[3] = { "WEAK TO", "RESISTS", "IMMUNE TO" };
+    int bottom = y + h;
+    int cx = ix + 68, cy = y;
+    for (int g = 0; g < 3; g++) {
+        bool heading = true;
+        for (int k = 0; k < count[g]; k++) {
+            char label[12];
+            pct_label(pd_type_multiplier_pct(list[g][k], t1, t2), label, sizeof(label));
+            int w = ui_type_chip_width(list[g][k], label);
+            if (cx + w > ix + iw) {
+                cx = ix + 68;
+                cy += SUM_ROW;
+            }
+            if (cy + TYPE_CHIP_H > bottom) return;
+            if (heading) {
+                pd_text(c, ix, cy - 2, HEADINGS[g], PD_LABEL, PD_LABEL_SHADOW);
+                heading = false;
+            }
+            cx += ui_type_chip(c, cx, cy, list[g][k], label) + 4;
+        }
+        if (!heading) {
+            cy += SUM_ROW;
+            cx = ix + 68;
+        }
+    }
+}
+
+static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m) {
     int x = MARGIN, y = CONTENT_Y, w = c->w - 2 * MARGIN, h = c->h - CONTENT_Y - MARGIN;
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
     int ix = x + f + 6, iw = w - 2 * (f + 6);
     int ty = y + f + 2;
-    // The icon left of the first two lines (name, HP).
-    if (pd_draw_mon_icon(c, g, m->species, ix - 2, ty + 2, m->species != PD_SPECIES_EGG && m->hp == 0)) {
-        ix += PD_ICON + 2;
-        iw -= PD_ICON + 2;
+    summary_info(c, g, m, ix, iw, ty);
+    int bodyY = ty + 74;
+    int bodyH = y + h - f - 30 - bodyY;
+    if (m->species != PD_SPECIES_EGG) {
+        pd_fill(c, ix, bodyY - 4, iw, 1, PD_DIVIDER);
+        if (ui->summaryPage == PD_SUMMARY_STATS) summary_stats(c, m, ix, iw, bodyY);
+        else if (ui->summaryPage == PD_SUMMARY_MATCHUPS) summary_matchups(c, m, ix, iw, bodyY, bodyH);
+        else summary_moves(c, m, ix, iw, bodyY);
     }
-    int ix0 = x + f + 6, iw0 = w - 2 * (f + 6);
-
-    bool egg = m->species == PD_SPECIES_EGG;
-    const char* name = mon_display_name(m, buf, sizeof(buf));
-    int nameW = pd_text(c, ix, ty, name, PD_LABEL, PD_LABEL_SHADOW);
-    if (!egg) {
-        gender_mark(c, ix + nameW + 3, ty, m->gender);
-        char lv[12];
-        snprintf(lv, sizeof(lv), "Lv%d", m->level);
-        pd_text_right(c, ix + iw, ty, lv, PD_VALUE, PD_VALUE_SHADOW);
-        const char* species = pd_species_name(m->species, buf2, sizeof(buf2));
-        if (strcmp(species, name)) pd_text(c, ix + nameW + 14, ty, species, PD_MUTED, PD_MUTED_SHADOW);
-    }
-    ty += 20;
-    if (!egg) {
-        ui_hp_bar(c, ix, ty + 4, 96, m->hp, m->maxHp);
-        char hp[16];
-        snprintf(hp, sizeof(hp), "%d/%d", m->hp, m->maxHp);
-        pd_text(c, ix + 120, ty, hp, PD_LABEL, PD_LABEL_SHADOW);
-        ui_status_badge(c, ix + iw - 30, ty + 2, m->status);
-        ty += 20;
-        ix = ix0;
-        iw = iw0;
-        pd_fill(c, ix, ty, iw, 1, PD_DIVIDER);
-        ty += 4;
-        for (int i = 0; i < PD_NUM_MOVES; i++) {
-            if (!m->moves[i]) continue;
-            pd_text_fit(c, ix, ty, iw - 120, pd_move_name(m->moves[i], buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
-            pd_text(c, ix + iw - 116, ty, pd_type_name(pd_move_type(m->moves[i])), PD_MUTED, PD_MUTED_SHADOW);
-            char pp[12];
-            snprintf(pp, sizeof(pp), "PP %d", m->pp[i]);
-            pd_text_right(c, ix + iw, ty, pp, PD_VALUE, PD_VALUE_SHADOW);
-            ty += 20;
+    // The page chips along the bottom left, BACK at the right. An egg has no
+    // moves, stats or matchups to show, so it gets none of the chips.
+    static const char* const PAGES[PD_SUMMARY_PAGES] = { "MOVES", "STATS", "MATCHUPS" };
+    int cx = ix;
+    if (m->species != PD_SPECIES_EGG) {
+        for (int i = 0; i < PD_SUMMARY_PAGES; i++) {
+            int pw = pd_text_width(PAGES[i]) + 14;
+            page_chip(ui, c, cx, y + h - f - 26, pw, PAGES[i], i);
+            cx += pw + 3;
         }
-    } else {
-        pd_text(c, ix, ty, "It's an egg. It will hatch in time.", PD_MUTED, PD_MUTED_SHADOW);
     }
     ui_button(ui, c, x + w - f - 70, y + h - f - 26, 66, 22, "BACK", HIT_BACK);
 }

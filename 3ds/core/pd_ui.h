@@ -95,6 +95,17 @@ enum pd_settings_page {
     PD_SETTINGS_TWEAKS, // C-07: the companion's small switches
 };
 
+// A party slot's summary, in pages: its moves, the numbers behind them (IVs,
+// EVs, nature - C-P-09) and what it takes damage from (C-P-08). The app keeps
+// the last two beside the moves; a 320x240 screen hasn't the room, so they are
+// pages of their own. The page stays put while stepping through the party.
+enum pd_summary_page {
+    PD_SUMMARY_MOVES,
+    PD_SUMMARY_STATS,
+    PD_SUMMARY_MATCHUPS,
+    PD_SUMMARY_PAGES,
+};
+
 enum pd_action {
     PD_ACTION_NONE,
     PD_ACTION_TOGGLE_FF,
@@ -175,6 +186,7 @@ struct pd_ui {
     int foeSelected, foeShown;
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
+    int summaryPage; // enum pd_summary_page: the summary's page
     int bagPocket;   // index into the game's own pocket order
     int bagSelected; // item index in that pocket, -1 = none
     int bagScroll;   // pixels

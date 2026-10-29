@@ -22,6 +22,18 @@ enum pd_gender {
     PD_GENDER_FEMALE,
 };
 
+// A stat's slot in struct Pokemon (gBattleMons counts in another order, and
+// the summary shows them in a third - the app's SUMMARY_STAT_ORDER).
+#define PD_STAT_HP 0
+#define PD_STAT_ATK 1
+#define PD_STAT_DEF 2
+#define PD_STAT_SPEED 3
+#define PD_STAT_SPATK 4
+#define PD_STAT_SPDEF 5
+#define PD_STAT_COUNT 6
+#define PD_MAX_IV 31
+#define PD_MAX_TOTAL_EVS 510
+
 struct pd_mon {
     int species;      // internal species id; PD_SPECIES_EGG for an egg
     char nickname[32]; // UTF-8, decoded from the game's charset
@@ -32,6 +44,15 @@ struct pd_mon {
     int pp[PD_NUM_MOVES];
     int heldItem; // the item it holds (0 = none), from the growth substruct
     uint32_t personality;
+    // What the game keeps but never shows: total experience, the six EVs and
+    // IVs, the stats as the game last worked them out, and nature (the
+    // personality's remainder, 0..24). stats[] is in the struct's own order
+    // (see PD_STAT_*), not the summary's.
+    uint32_t experience;
+    uint8_t evs[PD_STAT_COUNT];
+    uint8_t ivs[PD_STAT_COUNT];
+    uint16_t stats[PD_STAT_COUNT];
+    int nature;
 };
 
 struct pd_battle_mon {
@@ -142,5 +163,14 @@ const char* pd_pocket_name(int pocket);
 const char* pd_mapsec_name(const struct pd_game* g, int mapsec);
 // "PSN", "SLP", ... or "" (the app's statusLabel).
 const char* pd_status_label(uint32_t status);
+// The nature's name as the games print it ("ADAMANT"), and the stat it raises /
+// lowers (a PD_STAT_*, -1 for a neutral nature) - gNatureStatTable.
+const char* pd_nature_name(int nature);
+int pd_nature_raises(int nature);
+int pd_nature_lowers(int nature);
+// Hidden Power's type and power (30..70) from this mon's IVs - Gen 3's rule
+// (MonStats.kt); the type is always a real type, never the ??? slot.
+int pd_hidden_power_type(const struct pd_mon* m);
+int pd_hidden_power_power(const struct pd_mon* m);
 
 #endif

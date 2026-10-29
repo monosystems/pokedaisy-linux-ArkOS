@@ -23,7 +23,7 @@ smoke test (`linux/test/smoke.sh`) and the CI jobs
 | 1 | The host: sound, pad and keyboard, saves and their backups, one save state, fast-forward, the `/roms/gba` launcher, resume | done |
 | 2 | The companion over the game: `pd_ui` at 320x240 scaled 2x, the D-pad cursor over its hits, SETTINGS, the PortMaster package | done |
 | 3 | The first run on the R36S itself | done: it boots and plays, the DEX's EVOLVE works, the three SCREEN modes are measured, and the zip installs through PortMaster |
-| 4 | Content parity with the app's companion | under way: the P1 items in `TODO.md`; P1.1 (the bar's rules), P1.2 (TAB BAR and TWEAKS) and P1.3 (the title screen's waiting tabs) are done and seen on the R36S, and P1.4 (the held item tag) is done in the preview |
+| 4 | Content parity with the app's companion | under way: the P1 items in `TODO.md`; P1.1 (the bar's rules), P1.2 (TAB BAR and TWEAKS) and P1.3 (the title screen's waiting tabs) are done and seen on the R36S, and P1.4 (the held item tag), P1.5 (EXP and the matchups) and P1.6 (the STATS page) are done in the preview |
 | 5 | More games and languages, then the app's field actions | planned |
 
 ## Phase 3 — the handheld
@@ -102,6 +102,12 @@ before anything that acts on the game.
    LEARN (what it learns next, the TMs in the bag it can use), read the way the
    app's `Gen3Mon.kt` / `MoveLearning.kt` do. The mon struct is already decoded
    for the party list; the extra fields come out of the same 100 bytes.
+   - **STATS: done.** `pd_decode_party_mon` reads experience, EVs, IVs, the
+     stored stats and the nature; `pd_nature_*` and `pd_hidden_power_*` are the
+     app's `MonStats.kt` rules, and `summary_stats` lays them out as the
+     summary's second page (two columns of three, the IV bars, the arrows, the
+     totals, `HIDDEN POWER`). The EXP bar came with it (`ExpTables.kt` now in
+     `gen_tables.py`). Next here: LEARN.
 3. **STATES: more slots and thumbnails** (`linux/state.c`, `files.c`, the
    companion's SETTINGS): the app keeps ten slots with screenshots. This one is
    host-side, so it does not touch `3ds/core`.

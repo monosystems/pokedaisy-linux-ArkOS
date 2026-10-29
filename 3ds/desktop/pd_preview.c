@@ -268,6 +268,15 @@ int main(int argc, char** argv) {
     shot(out, name, "pressed-bounce", px);
     release(&p);
     shot(out, name, "summary", px);
+    // The summary's other pages: the numbers behind the moves (C-P-09) and
+    // what the mon takes damage from (C-P-08).
+    if (has_hit(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_STATS)) {
+        tap(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_STATS, 0);
+        shot(out, name, "summary-stats", px);
+        tap(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_MATCHUPS, 0);
+        shot(out, name, "summary-matchups", px);
+        tap(&p, HIT_SUMMARY_PAGE + PD_SUMMARY_MOVES, 0);
+    }
     tap(&p, HIT_BACK, 0);
 
     // BATTLE has a chip only while a battle is on, at the front of the bar

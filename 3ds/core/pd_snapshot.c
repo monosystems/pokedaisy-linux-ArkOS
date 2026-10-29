@@ -141,8 +141,17 @@ bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* m) {
         m->pp[i] = block[off[1] + 8 + i];
     }
     m->personality = personality;
-    // Growth is substruct 0 in both games: species, then the held item.
+    // Growth is substruct 0 in both games: species, held item, experience;
+    // then the EVs (substruct 2, six bytes) and the misc substruct's IV word
+    // (substruct 3, +4: five bits per stat, HP first).
     m->heldItem = u16(block + off[0] + 2);
+    m->experience = u32(block + off[0] + 4);
+    for (int i = 0; i < PD_STAT_COUNT; i++) m->evs[i] = block[off[2] + i];
+    uint32_t ivWord = u32(block + off[3] + 4);
+    for (int i = 0; i < PD_STAT_COUNT; i++) m->ivs[i] = (uint8_t) (ivWord >> (5 * i) & 0x1F);
+    // The party's stats follow max HP, which is HP's own stat.
+    for (int i = 0; i < PD_STAT_COUNT; i++) m->stats[i] = u16(raw + 0x58 + i * 2);
+    m->nature = (int) (personality % 25);
     m->level = raw[0x54];
     m->hp = u16(raw + 0x56);
     m->maxHp = u16(raw + 0x58);
@@ -424,6 +433,49 @@ const char* pd_status_label(uint32_t status) {
     if (status & (1 << 7)) return "TOX";
     if (status & (1 << 3)) return "PSN";
     return "";
+}
+
+// gNatureStatTable's rule, in the games' own words: nature / 5 is the stat it
+// raises, nature % 5 the one it lowers, counting ATTACK, DEFENSE, SPEED,
+// SP. ATK and SP. DEF; equal means a neutral nature.
+static const char* const NATURE_NAMES[25] = {
+    "HARDY", "LONELY", "BRAVE", "ADAMANT", "NAUGHTY",
+    "BOLD", "DOCILE", "RELAXED", "IMPISH", "LAX",
+    "TIMID", "HASTY", "SERIOUS", "JOLLY", "NAIVE",
+    "MODEST", "MILD", "QUIET", "BASHFUL", "RASH",
+    "CALM", "GENTLE", "SASSY", "CAREFUL", "QUIRKY",
+};
+
+const char* pd_nature_name(int nature) {
+    return nature >= 0 && nature < 25 ? NATURE_NAMES[nature] : "?";
+}
+
+int pd_nature_raises(int nature) {
+    if (nature < 0 || nature >= 25 || nature / 5 == nature % 5) return -1;
+    return 1 + nature / 5;
+}
+
+int pd_nature_lowers(int nature) {
+    if (nature < 0 || nature >= 25 || nature / 5 == nature % 5) return -1;
+    return 1 + nature % 5;
+}
+
+// Gen 3's Hidden Power: the IVs' lowest bits (HP first) pick one of 16 types -
+// FIGHTING up, with the games' ??? slot passed over - and their second bits
+// its power (30..70).
+static int iv_bits(const struct pd_mon* m, int bit) {
+    int v = 0;
+    for (int i = 0; i < PD_STAT_COUNT; i++) v |= (m->ivs[i] >> bit & 1) << i;
+    return v;
+}
+
+int pd_hidden_power_type(const struct pd_mon* m) {
+    static const unsigned char TYPES[16] = { 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17 };
+    return TYPES[iv_bits(m, 0) * 15 / 63];
+}
+
+int pd_hidden_power_power(const struct pd_mon* m) {
+    return iv_bits(m, 1) * 40 / 63 + 30;
 }
 
 // The trainer's party and which of it is out / next (readNativeTelemetry's

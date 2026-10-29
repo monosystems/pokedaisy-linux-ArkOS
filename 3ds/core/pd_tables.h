@@ -40,6 +40,13 @@ extern const unsigned char pd_gender_ratios[];
 extern const int pd_gender_ratios_count;
 extern const unsigned char pd_species_type_table[][2];
 extern const int pd_species_type_table_count;
+// gSpeciesInfo's growth rate per internal species, and gExperienceTables: the
+// total EXP a level needs, 0..100 (ExpTables.kt).
+extern const unsigned char pd_growth_rates[];
+extern const int pd_growth_rates_count;
+#define PD_EXP_CURVES 6
+#define PD_EXP_LEVELS 101
+extern const int pd_exp_tables[PD_EXP_CURVES][PD_EXP_LEVELS];
 
 #define PD_TYPE_NONE 255
 #define PD_SPECIES_EGG 412
@@ -58,5 +65,8 @@ int pd_type_multiplier_pct(int atk, int def1, int def2);
 // A species' types (the app's speciesTypeData; the same type twice for one),
 // PD_TYPE_NONE both when unknown.
 void pd_species_type_pair(int species, int* t1, int* t2);
+// The total EXP [species] needs to reach [level] (a species' own curve), or -1
+// when the species or level isn't known - what the summary's NEXT / MAX read.
+int pd_exp_for_level(int species, int level);
 
 #endif

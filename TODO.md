@@ -63,11 +63,22 @@ carries no per-game risk. About 29 rows, roughly +13 points.
       bar under the HP numbers; a statused slot drops the marker so the name
       still fits. The preview's party shots show it (`firered-party.png`: KADABRA
       holds QUICK CLAW, JOLTEON EXP. SHARE; `emerald-party.png`: CLEANSE TAG).*
-- [ ] **P1.5 Summary: EXP and matchups.** The `EXP` bar with `NEXT` / `MAX`, and the
+- [x] **P1.5 Summary: EXP and matchups.** The `EXP` bar with `NEXT` / `MAX`, and the
       `WEAK TO` / `RESISTS` / `IMMUNE TO` blocks with a multiplier per type. (C-P-07,
       C-P-08)
-- [ ] **P1.6 Summary: STATS.** `STAT` / `IV` / `EV` columns with `TOTAL`, the nature's
+      *Done: the summary's info block carries the `EXP` bar (`ui_exp_bar`, the
+      species' growth curve from `ExpTables.kt` through `gen_tables.py`), and the
+      matchups are the summary's third page (`summary_matchups`): type chips with
+      `2x` / `1/2x` / `0x`, the strongest weakness first. `firered-summary` and
+      `firered-summary-matchups` show it (KADABRA weak to Bug, Ghost and Dark;
+      CHARIZARD's Rock 4x).*
+- [x] **P1.6 Summary: STATS.** `STAT` / `IV` / `EV` columns with `TOTAL`, the nature's
       red up and blue down arrow, and `HIDDEN POWER` with its type and power. (C-P-09)
+      *Done: the summary's second page (`summary_stats`): `STAT` / IV bar and number
+      / `EV` in two columns of three, `TOTAL`, `NATURE` with the arrows on the stats
+      it moves, `HIDDEN POWER` with its type chip and `PWR`. The preview shoots it as
+      `-summary-stats`; the IVs and EVs were checked by recomputing KADABRA's,
+      CHARIZARD's and MANECTRIC's stats from their base stats.*
 - [ ] **P1.7 Bag: `ALL`, order, TM names.** The `ALL` pocket, the order button
       (`DEFAULT`, `NAME`, `TYPE`, `COUNT`) and the move after a TM's number.
       (C-B-04, C-B-05, C-B-07)
