@@ -45,7 +45,11 @@ struct pd_companion {
 static void set_host(struct pd_companion* c) {
     c->host.count = 2;
     c->host.labels[0] = "GAME";
-    snprintf(c->host.values[0], sizeof(c->host.values[0]), "%s", c->title);
+    // A 40-byte SETTINGS value against the file name's 64: cut here, on purpose,
+    // instead of letting snprintf do it behind the compiler's back (-Wformat-
+    // truncation says the name can be longer than the row).
+    snprintf(c->host.values[0], sizeof(c->host.values[0]), "%.*s", (int) sizeof(c->host.values[0]) - 1,
+             c->title);
     c->host.labels[1] = "SPEED";
     snprintf(c->host.values[1], sizeof(c->host.values[1]), "x%d", c->settings.ffSpeed);
 }

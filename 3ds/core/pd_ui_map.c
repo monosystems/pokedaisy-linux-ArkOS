@@ -190,14 +190,15 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     const char* name = "";
     const char* dungeon = NULL;
     if (ui->mapSel >= 0 || ui->mapDungeon >= 0) {
-        int main = ui->mapSel >= 0 ? ui->mapSel : ui->mapDungeon;
-        name = pd_mapsec_name(g, main);
+        // Not "main": that is the entry point, and GCC says so (-Wmain).
+        int sel = ui->mapSel >= 0 ? ui->mapSel : ui->mapDungeon;
+        name = pd_mapsec_name(g, sel);
         if (ui->mapDungeon >= 0) {
             rects[n++] = (struct pd_tile_rect) { ui->mapSelTx, ui->mapSelTy, 1, 1 };
             if (ui->mapSel >= 0) dungeon = pd_mapsec_name(g, ui->mapDungeon);
         } else {
             int p;
-            n = pd_map_tiles(g, main, &p, rects, MAX_RECTS);
+            n = pd_map_tiles(g, sel, &p, rects, MAX_RECTS);
         }
     } else if (hasPlayer && page == playerPage) {
         int p;
