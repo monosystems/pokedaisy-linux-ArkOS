@@ -76,6 +76,19 @@ struct options {
     bool help;
 };
 
+// The speed the game runs at, in percent of normal (0 = INFINITE): slow motion
+// while L1 is held (H-29, when COMPANION's switch is on), else the fast-forward
+// step (H-24) while it runs, else GAME SPEED (H-27).
+#define PD_INFINITE_BURST 32
+#define PD_SPEED_BURST_MAX 64
+static int speed_pct(struct pd_companion* c, bool ff, bool l1) {
+    if (!c) return ff ? 200 : 100;
+    if (!ff && l1 && pd_companion_slow_motion(c)) return PD_SLOW_SPEED;
+    int pct = ff ? pd_companion_ff_speed(c) : pd_companion_game_speed(c);
+    if (pct <= 0) return ff ? 0 : 100;
+    return pct;
+}
+
 static void usage(FILE* out) {
     fprintf(out,
             "PokeDaisy for Linux handhelds\n"
@@ -643,6 +656,7 @@ int main(int argc, char** argv) {
     char when[24] = { 0 };
     bool hasState = false;
     bool coreUp = false;
+    // --ff overrides the settings' fast-forward step for this run (a percent).
     int ffSpeed = opts.ffSpeed;
     // The scale really on screen. The companion's screen mode wins over --scale
     // once it has opened, and the handheld's launch script passes no --scale at
@@ -803,7 +817,9 @@ int main(int argc, char** argv) {
         if (opts.scaleSet) {
             pd_companion_set_screen_mode(companion, screen_mode_for_scale(opts.scale));
         }
-        if (!opts.ffSet) {
+        if (opts.ffSet) {
+            pd_companion_set_ff_speed(companion, ffSpeed);
+        } else {
             ffSpeed = pd_companion_ff_speed(companion);
         }
         if (pd_state_path(opts.rom, statePath, sizeof(statePath))) {
@@ -884,6 +900,7 @@ int main(int argc, char** argv) {
     uint64_t lastTick = next;
     unsigned long long frames = 0;
     bool ffToggled = false;
+    int speedAcc = 100; // the frame fraction the speeds carry over
     bool running = true;
     unsigned quitHeldMs = 0;
     unsigned statsFrames = 0;
@@ -1025,7 +1042,21 @@ int main(int argc, char** argv) {
 
         ff = ffToggled || pd_input_down(input, PD_BTN_R2);
         pd_audio_set_muted(audio, ff);
-        int n = ff ? ffSpeed : 1;
+        // The speed model (H-24, H-27, H-29), in percent of normal: slow motion
+        // while L1 is held, else fast-forward (the held R2 or the chip), else
+        // GAME SPEED. The remainder carries over, so 1.5x really is 1.5x.
+        int speedPct = speed_pct(companion, ff, pd_input_down(input, PD_BTN_L1));
+        int n = 0;
+        if (speedPct == 0) {
+            // INFINITE: as many frames as fit between two presents.
+            n = PD_INFINITE_BURST;
+        } else {
+            speedAcc += speedPct;
+            n = speedAcc / 100;
+            speedAcc -= n * 100;
+        }
+        if (n < 0) n = 0;
+        if (n > PD_SPEED_BURST_MAX) n = PD_SPEED_BURST_MAX;
         core->setKeys(core, overlay ? 0 : pd_input_keys(input));
         uint64_t emuStart = SDL_GetPerformanceCounter();
         for (int i = 0; i < n; i++) {

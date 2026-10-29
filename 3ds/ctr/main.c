@@ -475,7 +475,14 @@ static bool run_game(const char* file) {
             redraw = true;
         }
         uint32_t keys = gba_keys(held);
-        int frames = ff ? settings.ffSpeed : 1;
+        // pd_ui.h's speeds are percentages now (H-24): 0 = INFINITE, which this
+        // host runs as a burst, and whole steps are frames per pass.
+        int frames = 1;
+        {
+            int pct = ff ? settings.ffSpeed : settings.gameSpeed;
+            if (pct <= 0) frames = 32;
+            else if (pct >= 100) frames = pct / 100;
+        }
         for (int i = 0; i < frames; i++) {
             core->setKeys(core, keys);
             core->runFrame(core);

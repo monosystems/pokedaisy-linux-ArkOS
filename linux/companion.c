@@ -25,6 +25,13 @@
 #define PD_NOTICE_DIM 0x8FA0B0u
 #define PD_FOCUS_COLOR 0xFFFFFFu
 
+// "2x" / "100%" / "INFINITE" for a speed in percent (0 = INFINITE).
+static void speed_text(int pct, char* buf, size_t len) {
+    if (pct <= 0) snprintf(buf, len, "INFINITE");
+    else if (pct % 100 == 0) snprintf(buf, len, "%dx", pct / 100);
+    else snprintf(buf, len, "%d.%dx", pct / 100, pct % 100 / 10);
+}
+
 struct pd_companion {
     struct pd_game game;
     struct pd_snapshot snap, shown;
@@ -51,7 +58,7 @@ static void set_host(struct pd_companion* c) {
     snprintf(c->host.values[0], sizeof(c->host.values[0]), "%.*s", (int) sizeof(c->host.values[0]) - 1,
              c->title);
     c->host.labels[1] = "SPEED";
-    snprintf(c->host.values[1], sizeof(c->host.values[1]), "x%d", c->settings.ffSpeed);
+    speed_text(c->settings.gameSpeed, c->host.values[1], sizeof(c->host.values[1]));
 }
 
 struct pd_companion* pd_companion_open(const char* romPath, const char* settingsPath, const uint8_t* rom,
@@ -140,7 +147,9 @@ enum pd_action pd_companion_tick(struct pd_companion* c, pd_read_fn read, void* 
         return PD_ACTION_NONE;
     }
     c->host.ffOn = ffOn;
-    snprintf(c->host.values[1], sizeof(c->host.values[1]), "%sx%d", ffOn ? "FF " : "", c->settings.ffSpeed);
+    char sp[20];
+    speed_text(ffOn ? c->settings.ffSpeed : c->settings.gameSpeed, sp, sizeof(sp));
+    snprintf(c->host.values[1], sizeof(c->host.values[1]), "%s%s", ffOn ? "FF " : "", sp);
 
     if (c->game.cfg && read && (!c->sampled || frame / PD_SAMPLE_EVERY != c->lastSample / PD_SAMPLE_EVERY)) {
         c->sampled = true;
@@ -486,7 +495,21 @@ void pd_companion_set_screen_mode(struct pd_companion* c, int mode) {
 }
 
 int pd_companion_ff_speed(const struct pd_companion* c) {
-    return c ? c->settings.ffSpeed : PD_FF_MIN;
+    return c ? c->settings.ffSpeed : 200;
+}
+
+void pd_companion_set_ff_speed(struct pd_companion* c, int pct) {
+    if (!c) return;
+    c->settings.ffSpeed = pct;
+    c->dirty = true;
+}
+
+int pd_companion_game_speed(const struct pd_companion* c) {
+    return c ? c->settings.gameSpeed : 100;
+}
+
+bool pd_companion_slow_motion(const struct pd_companion* c) {
+    return c ? c->settings.slowMotion : false;
 }
 
 bool pd_companion_save_settings(struct pd_companion* c) {

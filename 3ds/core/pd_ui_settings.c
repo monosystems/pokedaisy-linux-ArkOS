@@ -55,6 +55,8 @@ static void info_pair(struct pd_canvas* c, int x, int y, int w, const char* l1, 
 // A page's title window: its name, a count or note at its right, and BACK to
 // the option list (the app's OptionTitleWindow with its arrow).
 static void companion_page(struct pd_ui* ui, struct pd_canvas* c);
+static void speed_page(struct pd_ui* ui, struct pd_canvas* c);
+static void speed_label(int pct, char* buf, size_t len);
 static void battle_page(struct pd_ui* ui, struct pd_canvas* c);
 static void saves_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_info* host);
 
@@ -137,6 +139,11 @@ bool ui_settings_act(struct pd_ui* ui, int id) {
         ui->settingsPage = inner ? PD_SETTINGS_COMPANION : PD_SETTINGS_HOME;
         return true;
     }
+    if (id == HIT_SETTING + SETTING_SLOW) {
+        ui->settings->slowMotion = !ui->settings->slowMotion;
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
+        return true;
+    }
     if (id == HIT_SETTING + SETTING_HINTS) {
         ui->settings->tweaks ^= PD_TWEAK_BIT(PD_TWEAK_BATTLE_HINTS);
         ui->action = PD_ACTION_SETTINGS_CHANGED;
@@ -171,6 +178,10 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     }
     if (ui->settingsPage == PD_SETTINGS_TWEAKS) {
         tweaks_page(ui, c);
+        return;
+    }
+    if (ui->settingsPage == PD_SETTINGS_SPEED) {
+        speed_page(ui, c);
         return;
     }
     if (ui->settingsPage == PD_SETTINGS_COMPANION) {
@@ -230,8 +241,8 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     y += 4;
 
     setting(ui, c, ix, &y, iw, SETTING_SCREEN, "SCREEN", pd_screen_mode_name(ui->settings->screenMode));
-    snprintf(buf, sizeof(buf), "%dx", ui->settings->ffSpeed);
-    setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
+    speed_label(ui->settings->gameSpeed, buf, sizeof(buf));
+    page_row(ui, c, ix, &y, iw, SETTING_SPEED, "SPEED", buf);
     // The app's groups, each a page behind its row (C-SET-01). The two settings
     // a player changes most stay on this page.
     snprintf(buf, sizeof(buf), "%d/%d", ui->tabsPicked, PD_BAR_TABS);
@@ -264,6 +275,45 @@ static void battle_page(struct pd_ui* ui, struct pd_canvas* c) {
             pd_tweak_on(ui->settings, PD_TWEAK_BATTLE_HINTS) ? "ON" : "OFF");
     ui_row(c, ix, y, iw, "Move ratings and the best pick", NULL, false);
     ui_add_hit(ui, ix - 4, y, iw + 8, ROW_H, SETTING_HINTS);
+}
+
+// The step's place in the two tables (the pick lists' cursor).
+static int ff_index(int pct) {
+    for (int i = 0; i < PD_FF_STEPS; i++) {
+        if (PD_FF_SPEEDS[i] == pct) return i;
+    }
+    return 1;
+}
+
+static int speed_index(int pct) {
+    for (int i = 0; i < PD_GAME_SPEEDS; i++) {
+        if (PD_GAME_SPEED_STEPS[i] == pct) return i;
+    }
+    return 3;
+}
+
+// "2x" / "100%" / "INFINITE" for a speed in percent (0 = INFINITE).
+static void speed_label(int pct, char* buf, size_t len) {
+    if (pct == 0) snprintf(buf, len, "INFINITE");
+    else if (pct % 100 == 0) snprintf(buf, len, "%dx", pct / 100);
+    else snprintf(buf, len, "%d.%dx", pct / 100, pct % 100 / 10);
+}
+
+// The SPEED page (H-24, H-27, H-29): the fast-forward step, what the game stays
+// at, and slow motion on a held L1.
+static void speed_page(struct pd_ui* ui, struct pd_canvas* c) {
+    page_title(ui, c, "SPEED", NULL);
+    int x = MARGIN, w = c->w - 2 * MARGIN, y = LIST_Y;
+    int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
+    int ix = x + lf + 4, iw = w - 2 * (lf + 4);
+    y += lf;
+    char buf[24];
+    speed_label(ui->settings->ffSpeed, buf, sizeof(buf));
+    setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
+    speed_label(ui->settings->gameSpeed, buf, sizeof(buf));
+    setting(ui, c, ix, &y, iw, SETTING_GAME_SPEED, "GAME SPEED", buf);
+    setting(ui, c, ix, &y, iw, SETTING_SLOW, "SLOW MOTION (L1)",
+            ui->settings->slowMotion ? "ON" : "OFF");
 }
 
 // The SAVES page: the one state slot, RESTART GAME and LEAVE GAME (C-SET-04).
@@ -348,13 +398,20 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     pd_dim(c, 0xE6);
     // Swallows taps beside the windows (they close the overlay).
     ui_add_hit(ui, 0, 0, c->w, c->h, HIT_SCRIM);
-    static const char* const FF[PD_FF_MAX - PD_FF_MIN + 1] = { "2x", "3x", "4x" };
+    static char ffLabels[PD_FF_STEPS][12];
+    static char gameLabels[PD_GAME_SPEEDS][12];
+    for (int i = 0; i < PD_FF_STEPS; i++) speed_label(PD_FF_SPEEDS[i], ffLabels[i], sizeof(ffLabels[i]));
+    for (int i = 0; i < PD_GAME_SPEEDS; i++) speed_label(PD_GAME_SPEED_STEPS[i], gameLabels[i], sizeof(gameLabels[i]));
     switch (ui->overlay) {
     case PD_OVERLAY_PICK_SCREEN:
         pick_list(ui, c, "SCREEN", SCREEN_NAMES, PD_SCREEN_MODES, ui->settings->screenMode);
         break;
     case PD_OVERLAY_PICK_FF:
-        pick_list(ui, c, "FAST-FORWARD", FF, PD_FF_MAX - PD_FF_MIN + 1, ui->settings->ffSpeed - PD_FF_MIN);
+        pick_list(ui, c, "FAST-FORWARD", (const char* const*) ffLabels, PD_FF_STEPS, ff_index(ui->settings->ffSpeed));
+        break;
+    case PD_OVERLAY_PICK_SPEED:
+        pick_list(ui, c, "GAME SPEED", (const char* const*) gameLabels, PD_GAME_SPEEDS,
+                  speed_index(ui->settings->gameSpeed));
         break;
     case PD_OVERLAY_TABS_FULL: {
         char text[96];

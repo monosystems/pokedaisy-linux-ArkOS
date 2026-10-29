@@ -46,8 +46,15 @@ enum pd_screen_mode {
     PD_SCREEN_MODES,
 };
 
-#define PD_FF_MIN 2
-#define PD_FF_MAX 4
+// Fast-forward steps (H-24), in percent of normal speed; the last is 0 =
+// INFINITE (as fast as the emulator goes between two presents).
+#define PD_FF_STEPS 9
+extern const int PD_FF_SPEEDS[PD_FF_STEPS];
+// GAME SPEED (H-27): what the game stays at, in percent.
+#define PD_GAME_SPEEDS 8
+extern const int PD_GAME_SPEED_STEPS[PD_GAME_SPEEDS];
+// Slow motion while held (H-29), in percent.
+#define PD_SLOW_SPEED 50
 
 // SETTINGS > TWEAKS, the app's CompanionTweaks: small on / off preferences for
 // the companion's motion and habits, each on by default.
@@ -86,7 +93,9 @@ struct pd_favs {
 // What the player set; the host loads and saves it (pd_settings.h).
 struct pd_settings {
     int screenMode; // enum pd_screen_mode
-    int ffSpeed;    // PD_FF_MIN..PD_FF_MAX
+    int ffSpeed;    // PD_FF_SPEEDS' percent, 0 = INFINITE (H-24)
+    int gameSpeed;  // PD_GAME_SPEED_STEPS' percent the game stays at (H-27)
+    bool slowMotion; // L1 held slows the game down (H-29)
     int guideNotice; // a bit per game kind whose GUIDE notice was accepted
     unsigned tabsShown; // a bit per enum pd_tab: the player's pick of the bar
     unsigned tweaks;    // a bit per enum pd_tweak: on
@@ -111,6 +120,7 @@ enum pd_settings_page {
     // C-SET-01: the app's groups, each a page behind a row.
     PD_SETTINGS_COMPANION, // the bar and the switches
     PD_SETTINGS_BATTLE,    // BATTLE HINTS
+    PD_SETTINGS_SPEED,     // GAME SPEED, FAST-FORWARD, SLOW MOTION
     PD_SETTINGS_SAVES,     // the states, RESTART GAME, LEAVE GAME
 };
 
@@ -172,6 +182,7 @@ enum pd_overlay {
     PD_OVERLAY_NONE,
     PD_OVERLAY_PICK_SCREEN,
     PD_OVERLAY_PICK_FF,
+    PD_OVERLAY_PICK_SPEED, // GAME SPEED (H-27)
     PD_OVERLAY_CONFIRM_SAVE,
     PD_OVERLAY_CONFIRM_LOAD,
     PD_OVERLAY_CONFIRM_LEAVE,

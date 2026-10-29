@@ -138,9 +138,14 @@ carries no per-game risk. About 29 rows, roughly +13 points.
       stale resume); `LEAVE GAME` says what the port keeps. The preview shoots
       `-settings-companion`, `-settings-battle`, `-settings-saves` and
       `-confirm-restart`.*
-- [ ] **P1.14 Speed rows.** `FF` as a toggle on Linux too, speeds from 1.5x to 10x
+- [x] **P1.14 Speed rows.** `FF` as a toggle on Linux too, speeds from 1.5x to 10x
       plus `INFINITE`, `GAME SPEED`, and slow motion while held. (H-23, H-24, H-27,
       H-29)
+      *Done: SETTINGS > SPEED holds `FAST-FORWARD` (1.5x to 10x and `INFINITE`,
+      `PD_FF_SPEEDS`), `GAME SPEED` (25% to 400%) and `SLOW MOTION (L1)`. The
+      Linux host runs all three from one percent accumulator, so 1.5x is really
+      1.5x and INFINITE is a burst between presents; `--ff` takes the percent and
+      the 3DS host adapts the same table. The preview shoots `-settings-speed`.*
 - [ ] **P1.15 Status bar.** Game, place, money, clock and battery over the game.
       (H-38)
 - [ ] **P1.16 Library: a game's page.** `INFO` with the ROM, save and states, plus

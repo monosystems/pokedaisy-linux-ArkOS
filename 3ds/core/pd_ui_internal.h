@@ -69,6 +69,7 @@ enum {
 // the rows of the pages those open.
 enum setting_row {
     SETTING_SCREEN,
+    SETTING_SPEED,     // opens the SPEED page (H-24, H-27, H-29)
     SETTING_FF,
     SETTING_COMPANION, // opens the COMPANION page
     SETTING_BATTLE,    // opens the BATTLE page
@@ -76,6 +77,8 @@ enum setting_row {
     SETTING_TAB_BAR,   // opens TAB BAR, the pick of the bar's chips (C-03)
     SETTING_TWEAKS,    // opens TWEAKS, the companion's small switches (C-07)
     SETTING_HINTS,     // BATTLE HINTS, the verdicts and the foe's matchups (C-BT-08)
+    SETTING_GAME_SPEED, // what the game stays at (H-27)
+    SETTING_SLOW,      // slow motion while L1 is held (H-29)
     SETTING_SAVE_STATE,
     SETTING_LOAD_STATE,
     SETTING_RESTART,   // C-SET-04

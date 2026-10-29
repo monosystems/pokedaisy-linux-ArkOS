@@ -99,13 +99,13 @@ kept, so a row can be read next to its manual page.
 | --- | --- | --- | --- | --- |
 | --- | --- | --- | --- | --- | --- |
 | H-22 | Fast-forward while a button is held | `fast-forward.md` | ✅ | Hold `Space` or pad `R2`. |
-| H-23 | Fast-forward as a toggle that survives the session | `fast-forward.md` | ◐ | `SETTING_FF` picks 2x / 3x / 4x and the `▶▶` chip toggles it; the app goes to 10x (`H-24`). `S` |
-| H-24 | FF speeds 1.5x to 10x plus `INFINITE` | `fast-forward.md` | ◐ | The port stops at 2x to 4x (`PD_FF_MIN` / `PD_FF_MAX`). The host paces the frames; wider steps are cheap. `S` |
+| H-23 | Fast-forward as a toggle that survives the session | `fast-forward.md` | ✅ | The `▶▶` chip at the bar's right toggles it, R2 holds it, and the step it runs at is the settings' (kept in the file across runs; the toggle itself is per run, as in the app). |
+| H-24 | FF speeds 1.5x to 10x plus `INFINITE` | `fast-forward.md` | ✅ | `PD_FF_SPEEDS` in `pd_ui.h`: 1.5x, 2x, 3x, 4x, 5x, 6x, 8x, 10x and `INFINITE`, picked on SETTINGS > SPEED. The Linux host runs them from a percent accumulator (so 1.5x is really 1.5x) and `INFINITE` as a burst between two presents. |
 | H-25 | `FF MODE` SMART (normal speed in menus and on the map) | `fast-forward.md` | — | Needs the core to expose "a menu is open" per game, which is per-game work again. `M` |
 | H-26 | `FF MUSIC` STEADY / SPED-UP / OFF | `fast-forward.md` | — | Today the sound is muted while fast-forwarding. `STEADY` also needs a recorded song cache, which is a project of its own. `S` for OFF / SPED-UP, `XL` for STEADY |
-| H-27 | `GAME SPEED` a game stays at (0.25x to 4x) | `fast-forward.md` | — | A setting plus a frame divisor. `S` |
+| H-27 | `GAME SPEED` a game stays at (0.25x to 4x) | `fast-forward.md` | ✅ | `GAME SPEED` on SETTINGS > SPEED, 25% to 400% in the app's steps, kept in the settings file and paced by the same accumulator as fast-forward (so 0.5x runs a frame every other pass). |
 | H-28 | Scene speeds: battle, text, menu, bike, surf | `fast-forward.md` | — | Mostly the same per-game detection as H-25. `M` |
-| H-29 | Slow motion while held | `fast-forward.md` | — | The mirror of the hold fast-forward. `S` |
+| H-29 | Slow motion while held | `fast-forward.md` | ✅ | `SLOW MOTION (L1)` on SETTINGS > SPEED: holding L1 with the companion closed runs the game at 50% (`PD_SLOW_SPEED`). The app's own trigger is a control of its phone layout; the port binds it to the one shoulder button the overlay leaves free. |
 | H-30 | `SOFT RESET` hotkey | `controls.md` | — | mGBA has reset; it needs a key chord and the ROM copy to survive it. `S` |
 
 ### Screen

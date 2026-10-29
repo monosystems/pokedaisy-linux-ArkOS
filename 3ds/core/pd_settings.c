@@ -6,7 +6,9 @@
 
 void pd_settings_defaults(struct pd_settings* s) {
     s->screenMode = PD_SCREEN_SHARP;
-    s->ffSpeed = PD_FF_MIN;
+    s->ffSpeed = 200; // 2x
+    s->gameSpeed = 100;
+    s->slowMotion = true;
     s->guideNotice = 0;
     s->tabsShown = PD_TABS_DEFAULT;
     s->tweaks = PD_TWEAKS_DEFAULT;
@@ -51,7 +53,9 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
         const char* value = eq + 1;
         int v;
         if (!strcmp(key, "screen")) int_in(value, 0, PD_SCREEN_MODES - 1, &s->screenMode);
-        else if (!strcmp(key, "ff")) int_in(value, PD_FF_MIN, PD_FF_MAX, &s->ffSpeed);
+        else if (!strcmp(key, "ff") && int_in(value, 0, 1000, &v)) s->ffSpeed = v == 0 || v >= 150 ? v : 200;
+        else if (!strcmp(key, "speed") && int_in(value, PD_GAME_SPEED_STEPS[0], PD_GAME_SPEED_STEPS[PD_GAME_SPEEDS - 1], &s->gameSpeed)) {}
+        else if (!strcmp(key, "slow") && int_in(value, 0, 1, &v)) s->slowMotion = v != 0;
         else if (!strcmp(key, "guide")) int_in(value, 0, 0xFFFF, &s->guideNotice);
         // The TAB BAR page's pick and the TWEAKS switches: a bit each, so an
         // unknown bit (a newer build's tab) is dropped instead of read.
@@ -80,3 +84,8 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     }
     return fclose(f) == 0;
 }
+
+// The app's fast-forward steps (1.5x to 10x, then INFINITE) and the GAME SPEED
+// steps it offers, both in percent of normal speed.
+const int PD_FF_SPEEDS[PD_FF_STEPS] = { 150, 200, 300, 400, 500, 600, 800, 1000, 0 };
+const int PD_GAME_SPEED_STEPS[PD_GAME_SPEEDS] = { 25, 50, 75, 100, 150, 200, 300, 400 };

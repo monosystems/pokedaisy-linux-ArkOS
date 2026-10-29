@@ -69,6 +69,10 @@ void pd_companion_restarted(struct pd_companion* c);
 int pd_companion_screen_mode(const struct pd_companion* c); // PD_SCREEN_*
 void pd_companion_set_screen_mode(struct pd_companion* c, int mode);
 int pd_companion_ff_speed(const struct pd_companion* c);
+// --ff N: the fast-forward step (a percent) this run uses (H-24).
+void pd_companion_set_ff_speed(struct pd_companion* c, int pct);
+int pd_companion_game_speed(const struct pd_companion* c);
+bool pd_companion_slow_motion(const struct pd_companion* c);
 bool pd_companion_save_settings(struct pd_companion* c);
 
 // What the crash handler prints: the tab being drawn, how many hits the last

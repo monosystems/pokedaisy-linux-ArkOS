@@ -238,7 +238,7 @@ int main(int argc, char** argv) {
     struct pd_settings settings;
     pd_settings_defaults(&settings);
     settings.screenMode = PD_SCREEN_SHARP;
-    settings.ffSpeed = 2;
+    settings.ffSpeed = 200; // 2x (H-24's percent)
     struct pd_ui ui;
     pd_ui_init(&ui, &settings);
     shotUi = &ui;
@@ -430,6 +430,16 @@ int main(int argc, char** argv) {
     tap(&p, HIT_TWEAK + PD_TWEAK_TAB_ANIM, 0);
     printf("tweaks 0x%02x\n", settings.tweaks);
     tap(&p, HIT_SETTINGS_BACK, 0);
+    tap(&p, HIT_SETTINGS_BACK, 0);
+
+    // SPEED (H-24, H-27, H-29): the fast-forward step, GAME SPEED, slow motion.
+    tap(&p, HIT_SETTING + SETTING_SPEED, 0);
+    shot(out, name, "settings-speed", px);
+    if (has_hit(&p, HIT_SETTING + SETTING_SLOW)) {
+        tap(&p, HIT_SETTING + SETTING_SLOW, 0);
+        shot(out, name, "settings-speed-off", px);
+        tap(&p, HIT_SETTING + SETTING_SLOW, 0);
+    }
     tap(&p, HIT_SETTINGS_BACK, 0);
 
     // BATTLE: the hints switch (C-BT-08), off and on again.
