@@ -28,7 +28,7 @@ enum {
     HIT_BAG_PC = 1811,     // the PC button under the tabs
     HIT_BAG_STAR = 1812,   // the description box's star (C-B-06)
     HIT_SETTING = 600,     // + enum setting_row
-    HIT_SETTINGS_TAB = 610, // + enum pd_tab: a TAB BAR page row
+    HIT_SETTINGS_TAB = 620, // + enum pd_tab: a TAB BAR page row
     HIT_TWEAK = 630,       // + enum pd_tweak: a TWEAKS page row
     HIT_SETTINGS_BACK = 640,
     HIT_MORE_TAB_BAR = 641, // MORE's button under the grid: SETTINGS > TAB BAR
@@ -65,13 +65,20 @@ enum {
     HIT_SUMMARY_PAGE = 3200, // + enum pd_summary_page: the summary's MOVES / STATS / MATCHUPS chips
 };
 
+// The rows: the home page's two settings and its group rows (C-SET-01), then
+// the rows of the pages those open.
 enum setting_row {
     SETTING_SCREEN,
     SETTING_FF,
-    SETTING_TAB_BAR, // opens TAB BAR, the pick of the bar's chips (C-03)
-    SETTING_TWEAKS,  // opens TWEAKS, the companion's small switches (C-07)
+    SETTING_COMPANION, // opens the COMPANION page
+    SETTING_BATTLE,    // opens the BATTLE page
+    SETTING_SAVES,     // opens the SAVES page
+    SETTING_TAB_BAR,   // opens TAB BAR, the pick of the bar's chips (C-03)
+    SETTING_TWEAKS,    // opens TWEAKS, the companion's small switches (C-07)
+    SETTING_HINTS,     // BATTLE HINTS, the verdicts and the foe's matchups (C-BT-08)
     SETTING_SAVE_STATE,
     SETTING_LOAD_STATE,
+    SETTING_RESTART,   // C-SET-04
     SETTING_LEAVE,
     SETTING_COUNT,
 };

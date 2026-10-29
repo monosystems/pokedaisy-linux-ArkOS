@@ -14,7 +14,7 @@ Compose, which the handheld cannot run.
 - [`linux/PLAN.md`](linux/PLAN.md): the phases the work goes in.
 - [`TODO.md`](TODO.md): the order the work goes in.
 
-## How much is ported: 39%
+## How much is ported: 40%
 
 Of the app's features, 227 apply to this device. Five more are marked not
 applicable, because the hardware has no use for them (touch controls, a
@@ -23,16 +23,16 @@ dual-screen launcher, importing files, a setup wizard, update channels). Of the
 
 | | Features |
 | --- | --- |
-| Done | 77 |
-| Partial: narrower than the app | 23 |
-| Not started | 127 |
+| Done | 79 |
+| Partial: narrower than the app | 22 |
+| Not started | 126 |
 
-**39%** counts a partial feature as a half. By area:
+**40%** counts a partial feature as a half. By area:
 
 | Area | Features | Ported |
 | --- | ---: | ---: |
 | Emulation, saves, speed, screen, input | 53 | 36% |
-| The companion's tabs | 111 | 56% |
+| The companion's tabs | 111 | 57% |
 | Over the game: HUD, quick menu, battle buttons, makeover | 22 | 0% |
 | Library, cheats and the other app surfaces | 24 | 15% |
 | Game and language support | 17 | 24% |

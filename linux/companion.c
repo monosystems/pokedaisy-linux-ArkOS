@@ -467,6 +467,12 @@ void pd_companion_resumed(struct pd_companion* c) {
     c->dirty = true;
 }
 
+void pd_companion_restarted(struct pd_companion* c) {
+    if (!c) return;
+    pd_ui_restarted(&c->ui);
+    c->dirty = true;
+}
+
 int pd_companion_screen_mode(const struct pd_companion* c) {
     return c ? c->settings.screenMode : PD_SCREEN_SHARP;
 }

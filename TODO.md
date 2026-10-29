@@ -127,9 +127,17 @@ carries no per-game risk. About 29 rows, roughly +13 points.
       chip row to size itself by its labels, and the preview's TAB BAR step now
       puts the bar back (it had been hiding GUIDE, which had left the guide's
       shots stale since P1.2).*
-- [ ] **P1.13 Settings as the app has it.** Groups and pages instead of one column,
+- [x] **P1.13 Settings as the app has it.** Groups and pages instead of one column,
       plus `RESTART GAME` and the resume wording on `LEAVE GAME`. (C-SET-01,
       C-SET-04)
+      *Done: the home page keeps `SCREEN` and `FAST-FORWARD` and lists the groups
+      `COMPANION` (TAB BAR, TWEAKS), `BATTLE` (BATTLE HINTS, moved there from
+      TWEAKS) and `SAVES` (the states, `RESTART GAME`, `LEAVE GAME`), each a page
+      with its summary on the row. `RESTART GAME` asks and then reboots the game
+      (`PD_ACTION_RESTART_GAME`, the Linux host resets the core and drops the
+      stale resume); `LEAVE GAME` says what the port keeps. The preview shoots
+      `-settings-companion`, `-settings-battle`, `-settings-saves` and
+      `-confirm-restart`.*
 - [ ] **P1.14 Speed rows.** `FF` as a toggle on Linux too, speeds from 1.5x to 10x
       plus `INFINITE`, `GAME SPEED`, and slow motion while held. (H-23, H-24, H-27,
       H-29)

@@ -385,11 +385,19 @@ int main(int argc, char** argv) {
     shot(out, name, "pick-screen", px);
     tap(&p, HIT_OPTION + PD_SCREEN_STRETCH, 0);
     printf("action %d, screen mode %d\n", pd_ui_take_action(&ui), settings.screenMode);
+    // The state rows live behind SAVES now (C-SET-01).
+    tap(&p, HIT_SETTING + SETTING_SAVES, 0);
     tap(&p, HIT_SETTING + SETTING_SAVE_STATE, 0);
     shot(out, name, "confirm-save", px);
     tap(&p, HIT_YES, 0);
     printf("action %d\n", pd_ui_take_action(&ui));
+    tap(&p, HIT_SETTINGS_BACK, 0);
     host.ffOn = false;
+
+    // The groups (C-SET-01): COMPANION holds TAB BAR and TWEAKS, BATTLE the
+    // hints switch, SAVES the states, RESTART GAME and LEAVE GAME (C-SET-04).
+    tap(&p, HIT_SETTING + SETTING_COMPANION, 0);
+    shot(out, name, "settings-companion", px);
 
     // TAB BAR (C-03): every tab as SHOWN or HIDDEN. Hide GUIDE and the game's
     // other tab takes its place; with the bar full again, GUIDE's row says so
@@ -410,19 +418,36 @@ int main(int argc, char** argv) {
             tap(&p, HIT_SETTINGS_TAB + PD_TAB_CARD, 0);
             tap(&p, HIT_SETTINGS_TAB + PD_TAB_GUIDE, 0);
         }
-        tap(&p, HIT_SETTINGS_BACK, 0);
-        shot(out, name, "settings-picked", px);
-    } else {
-        tap(&p, HIT_SETTINGS_BACK, 0);
     }
+    shot(out, name, "settings-picked", px);
 
-    // TWEAKS (C-07): the four switches, each on by default.
+    // TWEAKS (C-07): the switches, each on by default.
+    tap(&p, HIT_SETTINGS_BACK, 0);
     tap(&p, HIT_SETTING + SETTING_TWEAKS, 0);
     shot(out, name, "settings-tweaks", px);
     tap(&p, HIT_TWEAK + PD_TWEAK_TAB_ANIM, 0);
     shot(out, name, "settings-tweaks-off", px);
     tap(&p, HIT_TWEAK + PD_TWEAK_TAB_ANIM, 0);
     printf("tweaks 0x%02x\n", settings.tweaks);
+    tap(&p, HIT_SETTINGS_BACK, 0);
+    tap(&p, HIT_SETTINGS_BACK, 0);
+
+    // BATTLE: the hints switch (C-BT-08), off and on again.
+    tap(&p, HIT_SETTING + SETTING_BATTLE, 0);
+    if (has_hit(&p, HIT_SETTING + SETTING_HINTS)) {
+        shot(out, name, "settings-battle", px);
+        tap(&p, HIT_SETTING + SETTING_HINTS, 0);
+        shot(out, name, "settings-battle-off", px);
+        tap(&p, HIT_SETTING + SETTING_HINTS, 0);
+    }
+    tap(&p, HIT_SETTINGS_BACK, 0);
+
+    // SAVES: the restart's confirm, answered NO (a reboot would end this run).
+    tap(&p, HIT_SETTING + SETTING_SAVES, 0);
+    shot(out, name, "settings-saves", px);
+    tap(&p, HIT_SETTING + SETTING_RESTART, 0);
+    shot(out, name, "confirm-restart", px);
+    tap(&p, HIT_NO, 0);
     tap(&p, HIT_SETTINGS_BACK, 0);
 
     // TWEAKS > TAB ANIMATIONS on: a tab slides in from its side (the map's

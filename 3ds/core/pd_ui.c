@@ -257,6 +257,17 @@ void pd_ui_resumed(struct pd_ui* ui) {
     if (ui) ui->started = true;
 }
 
+void pd_ui_restarted(struct pd_ui* ui) {
+    if (!ui) return;
+    // C-SET-04: a reboot is back at the title screen, so C-05's waiting view
+    // applies again until the game reads.
+    ui->started = false;
+    ui->posCount = 0;
+    ui->summarySlot = -1;
+    ui->battleScroll = 0;
+    if (ui->tab == PD_TAB_BATTLE) ui->tab = ui->tabBeforeBattle;
+}
+
 static const struct pd_hit* hit_at(const struct pd_ui* ui, int x, int y) {
     for (int i = ui->hitCount - 1; i >= 0; i--) {
         const struct pd_hit* h = &ui->hits[i];
@@ -470,6 +481,7 @@ static void act(struct pd_ui* ui, int id) {
         } else if (id == HIT_YES) {
             enum pd_action a = ui->overlay == PD_OVERLAY_CONFIRM_SAVE ? PD_ACTION_SAVE_STATE
                 : ui->overlay == PD_OVERLAY_CONFIRM_LOAD ? PD_ACTION_LOAD_STATE
+                : ui->overlay == PD_OVERLAY_CONFIRM_RESTART ? PD_ACTION_RESTART_GAME
                 : ui->overlay == PD_OVERLAY_CONFIRM_LEAVE ? PD_ACTION_LEAVE_GAME : PD_ACTION_NONE;
             close_overlay(ui, a);
         } else if (id == HIT_NO || id == HIT_SCRIM) {
@@ -501,13 +513,20 @@ static void act(struct pd_ui* ui, int id) {
             [SETTING_FF] = PD_OVERLAY_PICK_FF,
             [SETTING_SAVE_STATE] = PD_OVERLAY_CONFIRM_SAVE,
             [SETTING_LOAD_STATE] = PD_OVERLAY_CONFIRM_LOAD,
+            [SETTING_RESTART] = PD_OVERLAY_CONFIRM_RESTART,
             [SETTING_LEAVE] = PD_OVERLAY_CONFIRM_LEAVE,
         };
-        switch (id - HIT_SETTING) {
-        case SETTING_TAB_BAR: ui->settingsPage = PD_SETTINGS_TABS; break;
-        case SETTING_TWEAKS: ui->settingsPage = PD_SETTINGS_TWEAKS; break;
-        default: ui->overlay = OPENS[id - HIT_SETTING]; break;
-        }
+        // The groups' rows open a page of their own (C-SET-01).
+        static const enum pd_settings_page PAGES[SETTING_COUNT] = {
+            [SETTING_COMPANION] = PD_SETTINGS_COMPANION,
+            [SETTING_BATTLE] = PD_SETTINGS_BATTLE,
+            [SETTING_SAVES] = PD_SETTINGS_SAVES,
+            [SETTING_TAB_BAR] = PD_SETTINGS_TABS,
+            [SETTING_TWEAKS] = PD_SETTINGS_TWEAKS,
+        };
+        int row = id - HIT_SETTING;
+        if (PAGES[row]) ui->settingsPage = PAGES[row];
+        else ui->overlay = OPENS[row];
     }
 }
 

@@ -1004,6 +1004,14 @@ int main(int argc, char** argv) {
             }
             break;
         }
+        case PD_ACTION_RESTART_GAME:
+            // C-SET-04: a console reset - the game boots and reads its save
+            // from the card. The resume of the moment before must not undo it.
+            pd_logf("companion: restarting the game");
+            if (resumePath[0]) remove(resumePath);
+            core->reset(core);
+            pd_companion_restarted(companion);
+            break;
         case PD_ACTION_LEAVE_GAME:
             pd_logf("companion: leaving the game");
             running = false;

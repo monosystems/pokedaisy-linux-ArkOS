@@ -54,6 +54,10 @@ static void info_pair(struct pd_canvas* c, int x, int y, int w, const char* l1, 
 
 // A page's title window: its name, a count or note at its right, and BACK to
 // the option list (the app's OptionTitleWindow with its arrow).
+static void companion_page(struct pd_ui* ui, struct pd_canvas* c);
+static void battle_page(struct pd_ui* ui, struct pd_canvas* c);
+static void saves_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_info* host);
+
 static void page_title(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* trailing) {
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
@@ -128,7 +132,14 @@ static void tweaks_page(struct pd_ui* ui, struct pd_canvas* c) {
 // app's barCount over the tabs this game has.
 bool ui_settings_act(struct pd_ui* ui, int id) {
     if (id == HIT_SETTINGS_BACK) {
-        ui->settingsPage = PD_SETTINGS_HOME;
+        // TAB BAR and TWEAKS live behind COMPANION (C-SET-01).
+        bool inner = ui->settingsPage == PD_SETTINGS_TABS || ui->settingsPage == PD_SETTINGS_TWEAKS;
+        ui->settingsPage = inner ? PD_SETTINGS_COMPANION : PD_SETTINGS_HOME;
+        return true;
+    }
+    if (id == HIT_SETTING + SETTING_HINTS) {
+        ui->settings->tweaks ^= PD_TWEAK_BIT(PD_TWEAK_BATTLE_HINTS);
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
         return true;
     }
     if (id >= HIT_SETTINGS_TAB && id < HIT_SETTINGS_TAB + PD_TAB_COUNT) {
@@ -160,6 +171,18 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     }
     if (ui->settingsPage == PD_SETTINGS_TWEAKS) {
         tweaks_page(ui, c);
+        return;
+    }
+    if (ui->settingsPage == PD_SETTINGS_COMPANION) {
+        companion_page(ui, c);
+        return;
+    }
+    if (ui->settingsPage == PD_SETTINGS_BATTLE) {
+        battle_page(ui, c);
+        return;
+    }
+    if (ui->settingsPage == PD_SETTINGS_SAVES) {
+        saves_page(ui, c, host);
         return;
     }
     int x = MARGIN, w = c->w - 2 * MARGIN;
@@ -209,10 +232,47 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     setting(ui, c, ix, &y, iw, SETTING_SCREEN, "SCREEN", pd_screen_mode_name(ui->settings->screenMode));
     snprintf(buf, sizeof(buf), "%dx", ui->settings->ffSpeed);
     setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
-    // The app's COMPANION group: the bar's own pick, then its small switches.
+    // The app's groups, each a page behind its row (C-SET-01). The two settings
+    // a player changes most stay on this page.
+    snprintf(buf, sizeof(buf), "%d/%d", ui->tabsPicked, PD_BAR_TABS);
+    page_row(ui, c, ix, &y, iw, SETTING_COMPANION, "COMPANION", buf);
+    page_row(ui, c, ix, &y, iw, SETTING_BATTLE, "BATTLE", pd_tweak_on(ui->settings, PD_TWEAK_BATTLE_HINTS) ? "HINTS ON" : "HINTS OFF");
+    page_row(ui, c, ix, &y, iw, SETTING_SAVES, "SAVES", host && host->hasState ? host->stateWhen : NULL);
+}
+
+// The COMPANION page: the bar's own pick, then its small switches.
+static void companion_page(struct pd_ui* ui, struct pd_canvas* c) {
+    page_title(ui, c, "COMPANION", NULL);
+    int x = MARGIN, w = c->w - 2 * MARGIN, y = LIST_Y;
+    int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
+    int ix = x + lf + 4, iw = w - 2 * (lf + 4);
+    y += lf;
+    char buf[40];
     snprintf(buf, sizeof(buf), "%d/%d", ui->tabsPicked, PD_BAR_TABS);
     page_row(ui, c, ix, &y, iw, SETTING_TAB_BAR, "TAB BAR", buf);
     page_row(ui, c, ix, &y, iw, SETTING_TWEAKS, "TWEAKS", NULL);
+}
+
+// The BATTLE page: the hints switch (C-BT-08), where the app keeps it.
+static void battle_page(struct pd_ui* ui, struct pd_canvas* c) {
+    page_title(ui, c, "BATTLE", NULL);
+    int x = MARGIN, w = c->w - 2 * MARGIN, y = LIST_Y;
+    int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
+    int ix = x + lf + 4, iw = w - 2 * (lf + 4);
+    y += lf;
+    setting(ui, c, ix, &y, iw, SETTING_HINTS, "BATTLE HINTS",
+            pd_tweak_on(ui->settings, PD_TWEAK_BATTLE_HINTS) ? "ON" : "OFF");
+    ui_row(c, ix, y, iw, "Move ratings and the best pick", NULL, false);
+    ui_add_hit(ui, ix - 4, y, iw + 8, ROW_H, SETTING_HINTS);
+}
+
+// The SAVES page: the one state slot, RESTART GAME and LEAVE GAME (C-SET-04).
+static void saves_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_info* host) {
+    page_title(ui, c, "SAVES", NULL);
+    int x = MARGIN, w = c->w - 2 * MARGIN, y = LIST_Y;
+    int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
+    int ix = x + lf + 4, iw = w - 2 * (lf + 4);
+    y += lf;
     setting(ui, c, ix, &y, iw, SETTING_SAVE_STATE, "SAVE STATE", NULL);
     if (host && host->hasState) {
         setting(ui, c, ix, &y, iw, SETTING_LOAD_STATE, "LOAD STATE", host->stateWhen);
@@ -222,6 +282,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         pd_text(c, ix + iw * 42 / 100, pd_text_y(y, ROW_H), "none yet", PD_MUTED, PD_MUTED_SHADOW);
         y += ROW_H;
     }
+    setting(ui, c, ix, &y, iw, SETTING_RESTART, "RESTART GAME", NULL);
     setting(ui, c, ix, &y, iw, SETTING_LEAVE, "LEAVE GAME", NULL);
 }
 
@@ -311,9 +372,17 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
         confirm(ui, c, "LOAD STATE",
                 "Go back to the saved state? Play since then is lost; the save file isn't touched.", "LOAD");
         break;
+    case PD_OVERLAY_CONFIRM_RESTART:
+        // C-SET-04: the app's wording, in the port's terms.
+        confirm(ui, c, "RESTART GAME",
+                "Reboot the game and load its save from the card again? Anything since that save is lost, and so is this moment.",
+                "RESTART");
+        break;
     case PD_OVERLAY_CONFIRM_LEAVE:
+        // The resume wording: the port picks this moment up next time.
         confirm(ui, c, "LEAVE GAME",
-                "Back to the game list? What the game saved stays saved; anything since is lost.", "LEAVE");
+                "Back to the game list? The game's save is untouched and this moment is kept: the port carries on from it next time.",
+                "LEAVE");
         break;
     default:
         break;

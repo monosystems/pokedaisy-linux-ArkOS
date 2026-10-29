@@ -106,8 +106,12 @@ static inline bool pd_tab_shown(const struct pd_settings* s, enum pd_tab t) {
 // SETTINGS' own pages: the option list, and the two the app opens from it.
 enum pd_settings_page {
     PD_SETTINGS_HOME,
-    PD_SETTINGS_TABS,   // C-03: which tabs the bar holds
-    PD_SETTINGS_TWEAKS, // C-07: the companion's small switches
+    PD_SETTINGS_TABS,      // C-03: which tabs the bar holds
+    PD_SETTINGS_TWEAKS,    // C-07: the companion's small switches
+    // C-SET-01: the app's groups, each a page behind a row.
+    PD_SETTINGS_COMPANION, // the bar and the switches
+    PD_SETTINGS_BATTLE,    // BATTLE HINTS
+    PD_SETTINGS_SAVES,     // the states, RESTART GAME, LEAVE GAME
 };
 
 // A party slot's summary, in pages: its moves, the numbers behind them (IVs,
@@ -142,6 +146,7 @@ enum pd_action {
     PD_ACTION_SAVE_STATE,
     PD_ACTION_LOAD_STATE,
     PD_ACTION_LEAVE_GAME,
+    PD_ACTION_RESTART_GAME, // C-SET-04: reboot the game, its save as it was
     PD_ACTION_SETTINGS_CHANGED,
 };
 
@@ -170,6 +175,7 @@ enum pd_overlay {
     PD_OVERLAY_CONFIRM_SAVE,
     PD_OVERLAY_CONFIRM_LOAD,
     PD_OVERLAY_CONFIRM_LEAVE,
+    PD_OVERLAY_CONFIRM_RESTART,
     PD_OVERLAY_TABS_FULL,    // TAB BAR: no place left for another chip
     PD_OVERLAY_PLACES,       // the MAP's list of places
     PD_OVERLAY_GUIDE_NOTICE, // the GUIDE's "AI-written, may be wrong" notice
@@ -264,6 +270,8 @@ bool pd_ui_waiting(const struct pd_ui* ui);
 // The host loaded a savestate to start from: that moment was in the game, so
 // the waiting tabs show at once (the app's resume).
 void pd_ui_resumed(struct pd_ui* ui);
+// The host rebooted the game (SETTING_RESTART): back to C-05's waiting view.
+void pd_ui_restarted(struct pd_ui* ui);
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host);
 // Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw.

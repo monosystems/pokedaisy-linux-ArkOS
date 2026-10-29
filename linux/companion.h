@@ -63,6 +63,8 @@ void pd_companion_set_state(struct pd_companion* c, bool hasState, const char* w
 // A savestate was loaded to start from (the resume), so the player is in the
 // game: the tabs that wait on a cold boot (C-05) show at once.
 void pd_companion_resumed(struct pd_companion* c);
+// The host rebooted the game: the companion waits at the title screen again.
+void pd_companion_restarted(struct pd_companion* c);
 
 int pd_companion_screen_mode(const struct pd_companion* c); // PD_SCREEN_*
 void pd_companion_set_screen_mode(struct pd_companion* c, int mode);
