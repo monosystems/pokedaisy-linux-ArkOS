@@ -23,7 +23,7 @@ smoke test (`linux/test/smoke.sh`) and the CI jobs
 | 1 | The host: sound, pad and keyboard, saves and their backups, one save state, fast-forward, the `/roms/gba` launcher, resume | done |
 | 2 | The companion over the game: `pd_ui` at 320x240 scaled 2x, the D-pad cursor over its hits, SETTINGS, the PortMaster package | done |
 | 3 | The first run on the R36S itself | done: it boots and plays, the DEX's EVOLVE works, the three SCREEN modes are measured, and the zip installs through PortMaster |
-| 4 | Content parity with the app's companion | under way: the P1 items in `TODO.md`; P1.1 (the bar's rules), P1.2 (TAB BAR and TWEAKS) and P1.3 (the title screen's waiting tabs) are done and seen on the R36S |
+| 4 | Content parity with the app's companion | under way: the P1 items in `TODO.md`; P1.1 (the bar's rules), P1.2 (TAB BAR and TWEAKS) and P1.3 (the title screen's waiting tabs) are done and seen on the R36S, and P1.4 (the held item tag) is done in the preview |
 | 5 | More games and languages, then the app's field actions | planned |
 
 ## Phase 3 — the handheld

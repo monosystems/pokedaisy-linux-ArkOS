@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "pd_romart.h"
 #include "pd_tables.h"
 
 #define CLEAR 0xFF000000u
@@ -83,6 +84,34 @@ bool pd_draw_mon_icon(struct pd_canvas* c, const struct pd_game* g, int species,
                 v = r << 16 | gg << 8 | b;
             }
             *d = v;
+        }
+    }
+    return true;
+}
+
+// The held-item marker: sHeldItemGfx is two 8x8 4bpp tiles (the item's, then
+// Mail's) in sHeldItemPalette, whose colour 0 is see-through.
+bool pd_held_marker_ready(const struct pd_game* g) {
+    return pd_romart_blob(g, PD_FR_HOLD_GFX) && pd_romart_blob(g, PD_FR_HOLD_PAL);
+}
+
+bool pd_draw_held_marker(struct pd_canvas* c, const struct pd_game* g, int x, int y, bool mail) {
+    const uint8_t* gfx = pd_romart_blob(g, PD_FR_HOLD_GFX);
+    const uint8_t* pal = pd_romart_blob(g, PD_FR_HOLD_PAL);
+    if (!gfx || !pal) return false;
+    uint32_t colours[16];
+    for (int i = 0; i < 16; i++) colours[i] = bgr555((uint16_t) (pal[i * 2] | pal[i * 2 + 1] << 8));
+    // A byte holds two pixels, the left one low.
+    const uint8_t* tile = gfx + (mail ? 32 : 0);
+    for (int py = 0; py < 8; py++) {
+        int sy = y + py;
+        if (sy < c->cy0 || sy >= c->cy1) continue;
+        for (int px = 0; px < 8; px++) {
+            uint8_t b = tile[py * 4 + px / 2];
+            int v = px & 1 ? b >> 4 : b & 0x0F;
+            int sx = x + px;
+            if (!v || sx < c->cx0 || sx >= c->cx1) continue;
+            c->px[sy * c->w + sx] = colours[v];
         }
     }
     return true;

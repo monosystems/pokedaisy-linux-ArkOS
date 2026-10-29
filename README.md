@@ -23,16 +23,16 @@ dual-screen launcher, importing files, a setup wizard, update channels). Of the
 
 | | Features |
 | --- | --- |
-| Done | 62 |
+| Done | 63 |
 | Partial: narrower than the app | 25 |
-| Not started | 140 |
+| Not started | 139 |
 
 **33%** counts a partial feature as a half. By area:
 
 | Area | Features | Ported |
 | --- | ---: | ---: |
 | Emulation, saves, speed, screen, input | 53 | 36% |
-| The companion's tabs | 111 | 43% |
+| The companion's tabs | 111 | 44% |
 | Over the game: HUD, quick menu, battle buttons, makeover | 22 | 0% |
 | Library, cheats and the other app surfaces | 24 | 15% |
 | Game and language support | 17 | 24% |

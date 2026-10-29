@@ -2,7 +2,7 @@
 """Writes 3ds/core/pd_map_gen.c from the app's region-map tables:
 
 - the fingerprints RomArt finds art by in a ROM (RomArtSigsGen.kt - only
-  the blobs the 3DS MAP and TRAINER CARD need),
+  the blobs the MAP, TRAINER CARD and the party slot's held-item tag need),
 - the cursor grids (RegionMapLayoutsGen.kt),
 - every map section's page and rectangle (MapSecData*.kt).
 
@@ -20,6 +20,8 @@ BLOBS = [
     "FR_PLAYER_RED_GFX", "FR_PLAYER_LEAF_GFX", "FR_PLAYER_PAL",
     "EM_REGION_GFX", "EM_REGION_PAL", "EM_REGION_MAP",
     "EM_PLAYER_BRENDAN_GFX", "EM_PLAYER_BRENDAN_PAL", "EM_PLAYER_MAY_GFX", "EM_PLAYER_MAY_PAL",
+    # The party slot's held-item marker (C-P-03).
+    "FR_HOLD_GFX", "FR_HOLD_PAL",
     # The TRAINER CARD (TrainerCardArt.kt's KANTO and HOENN blobs).
     "FR_CARD_GFX", "FR_CARD_FRONT", "FR_CARD_BACK", "FR_CARD_BG",
     "FR_CARD_PAL0", "FR_CARD_PAL1", "FR_CARD_PAL2", "FR_CARD_PAL3", "FR_CARD_PAL4",
@@ -37,8 +39,16 @@ BLOBS = [
 ]
 
 
+# Blobs whose bytes both games carry: the FR_ prefix says which ROM the
+# fingerprint was dumped from, not the only one it is found in. RomArt composes
+# one held-item marker image for every game's party slot.
+SHARED = {"FR_HOLD_GFX", "FR_HOLD_PAL"}
+
+
 def family(name):
     """Which ROMs a blob is looked for in: PD_BLOB_FIRERED / _EMERALD, or both."""
+    if name in SHARED:
+        return "PD_BLOB_FIRERED | PD_BLOB_EMERALD"
     if name.startswith("FR_"):
         return "PD_BLOB_FIRERED"
     if name.startswith("EM_"):

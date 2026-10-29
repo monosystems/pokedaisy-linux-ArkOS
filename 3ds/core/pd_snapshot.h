@@ -30,6 +30,7 @@ struct pd_mon {
     uint32_t status;
     int moves[PD_NUM_MOVES];
     int pp[PD_NUM_MOVES];
+    int heldItem; // the item it holds (0 = none), from the growth substruct
     uint32_t personality;
 };
 
@@ -130,6 +131,10 @@ bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* out);
 // The item's name / bag description in the game's own words ("" if unknown).
 const char* pd_item_name(const struct pd_game* g, int item);
 const char* pd_item_description(const struct pd_game* g, int item);
+// The ten Mail items, ORANGE MAIL through RETRO MAIL: the party menu's
+// held-item marker shows Mail's frame for them (the app's MAIL_ITEMS).
+#define PD_MAIL_FIRST 121
+#define PD_MAIL_LAST 132
 // The game's title for a pocket ("POKé BALLS").
 const char* pd_pocket_name(int pocket);
 

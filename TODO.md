@@ -56,8 +56,13 @@ carries no per-game risk. About 29 rows, roughly +13 points.
       the host loaded (the app's rule, less its field-callback check). The
       preview has it as `-waiting-*`; the smoke test checks both ends: a cold
       boot waits, a resumed one shows.*
-- [ ] **P1.4 Held item tag.** A thin bar with the item's icon and name on a party
+- [x] **P1.4 Held item tag.** A thin bar with the item's icon and name on a party
       slot. (C-P-03)
+      *Done: `held_item_tag` in `pd_ui_party.c` draws the game's own marker
+      (`sHeldItemGfx`, found in both games' ROMs) and the item's name on a white
+      bar under the HP numbers; a statused slot drops the marker so the name
+      still fits. The preview's party shots show it (`firered-party.png`: KADABRA
+      holds QUICK CLAW, JOLTEON EXP. SHARE; `emerald-party.png`: CLEANSE TAG).*
 - [ ] **P1.5 Summary: EXP and matchups.** The `EXP` bar with `NEXT` / `MAX`, and the
       `WEAK TO` / `RESISTS` / `IMMUNE TO` blocks with a multiplier per type. (C-P-07,
       C-P-08)

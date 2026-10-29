@@ -182,7 +182,7 @@ that frame.
 | --- | --- | --- | --- | --- | --- |
 | C-P-01 | Six slots with the game's icon, name, gender, level, HP bar and status | `party.md` | ✅ | `pd_ui_party.c`, icons from the ROM (`pd_icon.c`). |
 | C-P-02 | Fainted slots faded, status word on the slot | `party.md` | ✅ |  |
-| C-P-03 | Held item tag in the slot's corner | `party.md` | — | A thin bar over the top of the slot with the item's icon and name (V-20). The mon struct is already decoded; the bag's item name table is there too. `S` |
+| C-P-03 | Held item tag in the slot's corner | `party.md` | ✅ | A thin bar with the game's own held-item marker (`sHeldItemGfx` from the ROM: Mail's frame for Mail) and the item's name, right-aligned in the slot's free band under the HP numbers (`held_item_tag` in `pd_ui_party.c`) - the port's slots carry their own rows, so it is not the top corner. Two narrower edges: the game's marker stands in for the item's bag sprite, and a statused mon's bar drops the marker (the name wins over an ellipsis). A ROM without the art shows the name alone. |
 | C-P-04 | Icons that bounce like the game's | `party.md` | ◐ | The bounce is there (`icon_shift` in `pd_ui_party.c`, TWEAKS > PARTY ICONS MOVE): the icon of the slot under the press lifts 3 px and drops 1, at the game's HP-based speeds. Two things are narrower than the app: only the slot the port draws selected moves, where the app follows the game's own cursor, and the icon keeps its first ROM frame. `S` |
 | C-P-05 | Nickname as the game shows it | `party.md` | ✅ | The name comes out of the mon struct. |
 | C-P-06 | A summary with the mon's moves, type and PP | `party.md` | ✅ | Tap a slot. |

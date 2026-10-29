@@ -141,6 +141,8 @@ bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* m) {
         m->pp[i] = block[off[1] + 8 + i];
     }
     m->personality = personality;
+    // Growth is substruct 0 in both games: species, then the held item.
+    m->heldItem = u16(block + off[0] + 2);
     m->level = raw[0x54];
     m->hp = u16(raw + 0x56);
     m->maxHp = u16(raw + 0x58);

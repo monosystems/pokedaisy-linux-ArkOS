@@ -20,6 +20,12 @@ static const struct slot_colors SLOT_FAINTED = { 0x4A4A63, 0xD6A521, 0xC66B10, 0
 #define MALE_SHADOW 0x006394
 #define FEMALE 0xFF9C94
 #define FEMALE_SHADOW 0x9C4239
+// The held item tag's bar (C-P-03): its height, the padding round the marker
+// and the name, the marker's size and the gap after it.
+#define TAG_H 12
+#define TAG_INSET 4
+#define TAG_MARKER 8
+#define TAG_GAP 3
 
 static const char* mon_display_name(const struct pd_mon* m, char* buf, size_t len) {
     if (m->species == PD_SPECIES_EGG) return "EGG";
@@ -50,6 +56,35 @@ static int icon_shift(const struct pd_ui* ui, const struct pd_mon* m, int slot) 
     }
     unsigned interval = TICKS[level] * 1000 / 60;
     return ((ui->animMs / interval) & 1) ? -3 : 1;
+}
+
+// C-P-03: what the slot's mon holds, on a thin bar under the HP numbers and
+// above the HP bar - the ROM's own held-item marker and the item's name, in
+// the app's HeldItemTag colours (V-20). The bar is right-aligned and keeps
+// clear of the status badge on the left (emptyLeft is the row's free left
+// edge); when a status icon leaves no room for both, the name wins and the
+// marker goes. A ROM without the marker's art shows the name alone.
+static void held_item_tag(struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m, int x, int y, int w,
+                          int emptyLeft) {
+    if (!m->heldItem) return;
+    const char* name = pd_item_name(g, m->heldItem);
+    if (!name[0]) return;
+    int right = x + w - 8;
+    int room = right - emptyLeft - 2 * TAG_INSET;
+    int nameW = pd_text_width(name);
+    bool icon = pd_held_marker_ready(g) && nameW <= room - TAG_MARKER - TAG_GAP;
+    int maxName = room - (icon ? TAG_MARKER + TAG_GAP : 0);
+    if (maxName < pd_text_width("W...")) return; // no room for even a word
+    if (nameW > maxName) nameW = maxName;
+    int iconW = icon ? TAG_MARKER + TAG_GAP : 0;
+    int bw = 2 * TAG_INSET + iconW + nameW;
+    int bx = right - bw;
+    // The app's title window, flat: a grey line round a white bar.
+    pd_round_rect(c, bx, y, bw, TAG_H, 2, 0x63737B);
+    pd_round_rect(c, bx + 1, y + 1, bw - 2, TAG_H - 2, 1, PD_TITLE_FILL);
+    if (icon) pd_draw_held_marker(c, g, bx + TAG_INSET, y + 2, m->heldItem >= PD_MAIL_FIRST && m->heldItem <= PD_MAIL_LAST);
+    // Caps sit in the bar's middle rows (the 16px cell starts two rows up).
+    pd_text_fit(c, bx + TAG_INSET + iconW, y - 2, nameW + 1, name, PD_LABEL, PD_LABEL_SHADOW);
 }
 
 static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, int x, int y, int w,
@@ -84,11 +119,15 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         pd_text_right(c, x + w - 8, y + 3, lv, SLOT_TEXT, SLOT_TEXT_SHADOW);
         int nameW = pd_text_fit(c, tx, y + 3, x + w - 8 - lvW - 6 - 10 - tx, name, SLOT_TEXT, SLOT_TEXT_SHADOW);
         gender_mark(c, tx + nameW + 3, y + 3, m->gender);
+        const char* st = pd_status_label(m->status);
+        int badgeW = *st ? pd_text_width(st) + 6 : 0;
         ui_status_badge(c, tx, y + 24, m->status);
         char hp[16];
         snprintf(hp, sizeof(hp), "%d/%d", m->hp, m->maxHp);
         pd_text_right(c, x + w - 8, y + 21, hp, SLOT_TEXT, SLOT_TEXT_SHADOW);
         ui_hp_bar(c, x + 8, y + h - 18, w - 34, m->hp, m->maxHp);
+        // The tag's band: under the HP numbers, over the HP bar (C-P-03).
+        held_item_tag(c, g, m, x, y + 35, w, tx + (badgeW ? badgeW + 4 : 0));
     } else {
         pd_text_fit(c, tx, y + 3, x + w - 8 - tx, name, SLOT_TEXT, SLOT_TEXT_SHADOW);
     }

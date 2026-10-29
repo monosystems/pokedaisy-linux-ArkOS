@@ -17,6 +17,10 @@ enum pd_blob {
     PD_FR_PLAYER_RED_GFX, PD_FR_PLAYER_LEAF_GFX, PD_FR_PLAYER_PAL,
     PD_EM_REGION_GFX, PD_EM_REGION_PAL, PD_EM_REGION_MAP,
     PD_EM_PLAYER_BRENDAN_GFX, PD_EM_PLAYER_BRENDAN_PAL, PD_EM_PLAYER_MAY_GFX, PD_EM_PLAYER_MAY_PAL,
+    // The party menu's held-item marker (sHeldItemGfx / sHeldItemPalette): two
+    // 8x8 sprites, the item's and Mail's. FireRed's bytes, which Emerald also
+    // carries, so it is looked for in both games' ROMs.
+    PD_FR_HOLD_GFX, PD_FR_HOLD_PAL,
     // The TRAINER CARD (TrainerCardArt): tiles, front / back / backdrop
     // tilemaps, a palette per star count, the girl's palette, badges, the
     // star, FireRed's stickers, the trainer pics and FONT_NORMAL.
