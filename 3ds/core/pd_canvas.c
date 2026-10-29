@@ -214,15 +214,24 @@ int pd_text_wrap(struct pd_canvas* c, int x, int y, int max_w, int lineH, int ma
     return lines;
 }
 
-void pd_dim(struct pd_canvas* c, int alpha) {
+void pd_dim_rect(struct pd_canvas* c, int x, int y, int w, int h, int alpha) {
+    int x0 = x < 0 ? 0 : x, y0 = y < 0 ? 0 : y;
+    int x1 = x + w > c->w ? c->w : x + w, y1 = y + h > c->h ? c->h : y + h;
     int keep = 255 - alpha;
-    for (int i = 0; i < c->w * c->h; i++) {
-        uint32_t p = c->px[i];
-        uint32_t r = ((p >> 16) & 0xFF) * (uint32_t) keep / 255;
-        uint32_t g = ((p >> 8) & 0xFF) * (uint32_t) keep / 255;
-        uint32_t b = (p & 0xFF) * (uint32_t) keep / 255;
-        c->px[i] = (r << 16) | (g << 8) | b;
+    for (int yy = y0; yy < y1; yy++) {
+        uint32_t* row = c->px + yy * c->w;
+        for (int xx = x0; xx < x1; xx++) {
+            uint32_t p = row[xx];
+            uint32_t r = ((p >> 16) & 0xFF) * (uint32_t) keep / 255;
+            uint32_t g = ((p >> 8) & 0xFF) * (uint32_t) keep / 255;
+            uint32_t b = (p & 0xFF) * (uint32_t) keep / 255;
+            row[xx] = (r << 16) | (g << 8) | b;
+        }
     }
+}
+
+void pd_dim(struct pd_canvas* c, int alpha) {
+    pd_dim_rect(c, 0, 0, c->w, c->h, alpha);
 }
 
 void pd_triangle(struct pd_canvas* c, int x, int y, int size, enum pd_dir dir, uint32_t color) {

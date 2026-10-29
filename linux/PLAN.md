@@ -7,12 +7,12 @@ the portable C core from [`3ds/core`](../3ds/core), unchanged, so every part of
 the app is read and drawn the same way.
 
 `README.md` says what the port does today; this file says what comes next and
-in which order. The row by row inventory of the app's features against both
-ports, with the effort each missing one needs, is [`../PORTING.md`](../PORTING.md).
+in which order. The row by row inventory of the app's features against the
+port, with the effort each missing one needs, is [`../PORTING.md`](../PORTING.md).
 
 ## Status
 
-**Phase 0–3 done; phase 4 (content parity) is next.** Everything below is
+**Phase 0–3 done; phase 4 (content parity) is under way.** Everything below is
 in `linux/` unless it says otherwise, and every phase ends with the headless
 smoke test (`linux/test/smoke.sh`) and the CI jobs
 (`.github/workflows/ci.yml`: x86_64, ASan, aarch64 + PortMaster zip).
@@ -23,7 +23,7 @@ smoke test (`linux/test/smoke.sh`) and the CI jobs
 | 1 | The host: sound, pad and keyboard, saves and their backups, one save state, fast-forward, the `/roms/gba` launcher, resume | done |
 | 2 | The companion over the game: `pd_ui` at 320x240 scaled 2x, the D-pad cursor over its hits, SETTINGS, the PortMaster package | done |
 | 3 | The first run on the R36S itself | done: it boots and plays, the DEX's EVOLVE works, the three SCREEN modes are measured, and the zip installs through PortMaster |
-| 4 | Content parity with the app's companion | next: the P1 items in `TODO.md` |
+| 4 | Content parity with the app's companion | under way: the P1 items in `TODO.md`; P1.1 (the bar's rules), P1.2 (TAB BAR and TWEAKS) and P1.3 (the title screen's waiting tabs) are done and seen on the R36S |
 | 5 | More games and languages, then the app's field actions | planned |
 
 ## Phase 3 — the handheld

@@ -8,8 +8,9 @@
 // writes <name>-party.png, -pressed, -pressed-bounce, -summary, -battle,
 // -battle-nojump, -bag, -bag-item, -bag-scrolled, -bag-pocket, -settings,
 // -pick-screen, -confirm-save, -settings-tabs (and -hidden, -full, -picked),
-// -settings-tweaks (and -off), -tab-slide, the MAP, the DEX (list, entry,
-// EVOLVE, next, the other dex), the GUIDE and the CARD.
+// -settings-tweaks (and -off), -tab-slide, -waiting-party (and -bag, -map,
+// -card), the MAP, the DEX (list, entry, EVOLVE, next, the other dex), the
+// GUIDE and the CARD.
 // With a ROM whose map art the port finds, the MAP shots come too; without one
 // they are skipped, and the DEX needs a ROM with its tables. The BATTLE page,
 // and MORE's, need a battle (which pushes a tab behind MORE); the TAB BAR page's
@@ -568,6 +569,50 @@ int main(int argc, char** argv) {
             }
         }
     }
+
+    // C-05: a boot still on the game's title screen. What the RAM holds before
+    // the save loads - no party, no battle, no position - keeps the save's tabs
+    // waiting: empty slots, the app's window, a blinking PRESS START.
+    struct pd_snapshot boot;
+    memset(&boot, 0, sizeof(boot));
+    boot.valid = true;
+    boot.money = -1;
+    ui.started = false;
+    ui.posCount = 0;
+    pd_ui_update(&ui, &boot);
+    printf("waiting on a boot: %d\n", pd_ui_waiting(&ui));
+    static const enum pd_tab WAIT_TABS[] = { PD_TAB_PARTY, PD_TAB_BAG, PD_TAB_MAP, PD_TAB_CARD };
+    static const char* const WAIT_SHOTS[] = { "waiting-party", "waiting-bag", "waiting-map", "waiting-card" };
+    for (int i = 0; i < 4; i++) {
+        if (!pd_tab_available(&game, WAIT_TABS[i])) continue;
+        ui.tab = WAIT_TABS[i];
+        draw(&p);
+        shot(out, name, WAIT_SHOTS[i], px);
+    }
+    // The blink itself: pd_ui_tick turns PRESS START off, then on again.
+    ui.tab = PD_TAB_PARTY;
+    draw(&p);
+    bool was = ui.waitBlink;
+    for (int i = 0; i < 30 && ui.waitBlink == was; i++) pd_ui_tick(&ui, 60);
+    printf("the blink flipped: %d\n", ui.waitBlink != was);
+    draw(&p);
+    shot(out, name, "waiting-blink", px);
+    // Walking ends the wait too (the app's five map positions), and so does the
+    // first sample of a loaded save.
+    for (int i = 0; i < 5; i++) {
+        struct pd_snapshot walk = boot;
+        walk.posOk = true;
+        walk.x = 10 + i;
+        walk.y = 20;
+        pd_ui_update(&ui, &walk);
+    }
+    printf("waiting after five positions: %d\n", pd_ui_waiting(&ui));
+    ui.tab = PD_TAB_PARTY;
+    ui.started = false;
+    ui.posCount = 0;
+    pd_ui_update(&ui, &snap);
+    printf("waiting after the party read: %d\n", pd_ui_waiting(&ui));
+    draw(&p);
 
     // The decoded party, for checking against the app's tests.
     for (int i = 0; i < snap.partyCount; i++) {

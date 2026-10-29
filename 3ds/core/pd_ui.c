@@ -184,10 +184,35 @@ void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     ui->foeSelected = ui->foeShown = -1;
     ui->lastFoeActive = ui->lastFoeNext = -1;
     ui->settingsPage = PD_SETTINGS_HOME;
+    ui->waitBlink = true;
     ui->settings = settings;
 }
 
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
+    // C-05: before the field (the game's title screen, its intro, CONTINUE
+    // loading the save) the save's tabs must not show what the RAM still holds.
+    // The app ends the wait at the field's own callback, a battle or five map
+    // positions; the port reads no callback, so it takes a battle, a party (one
+    // only a loaded save has) or the fifth position.
+    if (!ui->started && s->valid) {
+        if (s->inBattle || s->partyCount > 0) {
+            ui->started = true;
+        } else if (s->posOk) {
+            bool known = false;
+            for (int i = 0; i < ui->posCount && !known; i++) {
+                known = ui->posSeen[i][0] == s->mapGroup && ui->posSeen[i][1] == s->mapNum &&
+                        ui->posSeen[i][2] == s->x && ui->posSeen[i][3] == s->y;
+            }
+            if (!known && ui->posCount < 5) {
+                ui->posSeen[ui->posCount][0] = s->mapGroup;
+                ui->posSeen[ui->posCount][1] = s->mapNum;
+                ui->posSeen[ui->posCount][2] = s->x;
+                ui->posSeen[ui->posCount][3] = s->y;
+                ui->posCount++;
+            }
+            if (ui->posCount >= 5) ui->started = true;
+        }
+    }
     bool on = s->valid && s->inBattle && s->battlers[PD_POS_PLAYER_LEFT].species;
     if (on && !ui->battleWasOn) {
         // A battle opens BATTLE, at the front of the bar (the app's rule);
@@ -221,6 +246,14 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
     }
     if (ui->foeSelected >= s->foeCount) ui->foeSelected = -1;
     if (ui->summarySlot >= s->partyCount) ui->summarySlot = -1;
+}
+
+bool pd_ui_waiting(const struct pd_ui* ui) {
+    return ui && !ui->started;
+}
+
+void pd_ui_resumed(struct pd_ui* ui) {
+    if (ui) ui->started = true;
 }
 
 static const struct pd_hit* hit_at(const struct pd_ui* ui, int x, int y) {
@@ -279,6 +312,42 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_
     pd_bitmap(c, x + (ICON_W - 11) / 2, 2 + (CHIP_H - 11) / 2, GEAR, 11, open ? PD_VALUE : PD_TITLE_TEXT);
 }
 
+// The tabs that show what the save holds, so they wait for the game (C-05).
+// The POKéDEX and the GUIDE read the ROM's tables and the save's flags, and
+// SETTINGS and MORE never wait.
+static bool tab_waits(enum pd_tab t) {
+    return t == PD_TAB_PARTY || t == PD_TAB_BAG || t == PD_TAB_MAP || t == PD_TAB_CARD;
+}
+
+// C-05: a boot still on the game's title screen. The app dims the game's own
+// empty party slots to 45% and lays its waiting window over them; the port
+// draws its empty slots (the FireRed-like ones it has), dims them the same way
+// and puts the same window and PRESS START over them.
+static void waiting_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g) {
+    struct pd_snapshot empty;
+    memset(&empty, 0, sizeof(empty));
+    empty.money = -1;
+    int hits = ui->hitCount;
+    ui_party_tab(ui, c, g, &empty);
+    // The slots are the picture here, not a control: the app's WaitingView has
+    // none either.
+    ui->hitCount = hits;
+    pd_dim_rect(c, 0, CONTENT_Y, c->w, c->h - CONTENT_Y, 0x8C);
+
+    const char* line = "Your party shows up here once you're in the game.";
+    int w = c->w - 2 * MARGIN;
+    int inner = w - 2 * (7 + 6); // pd_list_box's frame, then its inset
+    int lines = pd_text_wrap(NULL, 0, 0, inner, 16, 3, line, 0, 0);
+    int h = 14 + 8 + lines * 16 + 10 + 16;
+    int x = MARGIN, y = CONTENT_Y + (c->h - CONTENT_Y - h) / 2;
+    int f = pd_list_box(c, x, y, w, h);
+    pd_text_wrap(c, x + f + 6, y + f + 8, w - 2 * (f + 6), 16, 3, line, PD_LABEL, PD_LABEL_SHADOW);
+    if (ui->waitBlink) {
+        const char* label = "PRESS START";
+        pd_text(c, x + (w - pd_text_width(label)) / 2, y + h - f - 6 - 16, label, PD_VALUE, PD_VALUE_SHADOW);
+    }
+}
+
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host) {
     layout(ui, g);
@@ -293,6 +362,8 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
         ui_settings_tab(ui, c, g, s, host);
     } else if (!g->cfg) {
         ui_notice(c, "NOT SUPPORTED", g->unsupported ? g->unsupported : "", "SETTINGS has what was detected.");
+    } else if (!ui->started && tab_waits(ui->tab)) {
+        waiting_tab(ui, c, g);
     } else if (ui->tab == PD_TAB_PARTY) {
         ui_party_tab(ui, c, g, s);
     } else if (ui->tab == PD_TAB_BAG) {
@@ -365,6 +436,15 @@ bool pd_ui_tick(struct pd_ui* ui, unsigned ms) {
         }
     } else {
         ui->iconMs = 0;
+    }
+    // C-05: PRESS START blinks on the title screen's rhythm - the app fades it
+    // over 1200 ms and shows it while the fade is under 0.6.
+    if (!ui->started && tab_waits(ui->tab)) {
+        bool on = (ui->animMs % 1200) < 720;
+        if (on != ui->waitBlink) {
+            ui->waitBlink = on;
+            redraw = true;
+        }
     }
     return redraw;
 }

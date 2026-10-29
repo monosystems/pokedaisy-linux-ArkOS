@@ -6,6 +6,7 @@
 #   game.png   the game's own frame, painted red through mGBA (--test-fill):
 #              core, frame loop, texture, scaling and PNG writer
 #   party.png  the companion over it: the portable UI, its 2x scaling, the cursor
+#              - the waiting view (C-05), because this ROM never reaches a field
 #   bag.png    the same after a tab switch: the D-pad navigation works
 #
 #   linux/test/smoke.sh [build-dir]        (default: linux/build)
@@ -52,6 +53,11 @@ mkdir -p "$work/empty"
 "$build/pokedaisy" "$work/smoke.gba" --headless --frames 6 --test-fill --log "$work/resume-a.log"
 "$build/pokedaisy" "$work/smoke.gba" --headless --frames 3 --screenshot "$work/resume.png" \
     --log "$work/resume-b.log"
+# ... and what it does to the companion (C-05): a boot that carried a resume on
+# is in the game already, so its tabs show instead of the cold boot's waiting
+# view (party.png).
+"$build/pokedaisy" "$work/smoke.gba" --headless --frames 4 --companion \
+    --screenshot "$work/resume-companion.png" --log "$work/resume-companion.log"
 
 python3 - "$work" <<'EOF'
 import os
@@ -104,6 +110,8 @@ assert bright > 200, f'the companion drew almost no text ({bright} bright pixels
 colours = {party[y * prow + 1 + x * 3:y * prow + 4 + x * 3] for y in range(0, ph, 4) for x in range(0, pw, 4)}
 assert len(colours) >= 4, f'the companion screen looks flat ({len(colours)} colours)'
 assert party != game, 'the companion did not draw over the game'
+# C-05: this ROM never reaches a field, so the save's tabs wait.
+assert 'waiting 1' in open(os.path.join(work, 'party.log')).read(), 'a cold boot did not wait'
 
 _, _, bag, _ = decode(os.path.join(work, 'bag.png'))
 assert bag != party, 'tabnext did not change the screen'
@@ -138,6 +146,12 @@ assert pixel(resumed, rrow, w // 2, h // 2) == b'\xff\x00\x00', 'resume did not 
 resume_b = open(os.path.join(work, 'resume-b.log')).read()
 assert 'resume: carried on' in resume_b, 'the second run did not load the resume state'
 assert 'resume: saved' in open(os.path.join(work, 'resume-a.log')).read(), 'leaving did not write a resume state'
+# C-05: the resumed boot is in the game, so the companion's tabs draw instead of
+# the waiting view the cold boot (party.png) showed.
+_, _, resumed_party, _ = decode(os.path.join(work, 'resume-companion.png'))
+assert resumed_party != party, 'a resumed boot still drew the waiting view'
+resume_companion = open(os.path.join(work, 'resume-companion.log')).read()
+assert 'waiting 0' in resume_companion, 'the resumed boot kept waiting'
 
 print(f'smoke: ok (game, companion, tab switch, game list, resume; {bright} bright pixels)')
 EOF

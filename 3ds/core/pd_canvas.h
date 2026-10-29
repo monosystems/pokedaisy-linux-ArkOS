@@ -50,6 +50,8 @@ int pd_text_wrap(struct pd_canvas* c, int x, int y, int max_w, int lineH, int ma
 // Darkens everything drawn so far towards black: alpha 0-255 (the app's
 // black-out overlays are 0xE6).
 void pd_dim(struct pd_canvas* c, int alpha);
+// The same for one rectangle (the waiting view's slots behind its window).
+void pd_dim_rect(struct pd_canvas* c, int x, int y, int w, int h, int alpha);
 
 // A filled pixel triangle `size` px from base to tip, pointing dir
 // (PD_LEFT / PD_RIGHT / PD_UP / PD_DOWN) - drawn cursors, since the font has none.

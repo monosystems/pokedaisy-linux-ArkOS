@@ -158,6 +158,15 @@ struct pd_ui {
     unsigned animMs, iconMs;
     // SETTINGS: the page shown (the option list, or one of its own pages).
     enum pd_settings_page settingsPage;
+    // C-05: whether the player is in the game yet. A boot at the title screen
+    // draws empty party slots and a blinking PRESS START on the save's tabs
+    // until a battle, a party or five different map positions say otherwise
+    // (the app's rule, without its field-callback check), or the host resumed
+    // into a state. posSeen are the positions this boot has shown.
+    bool started;
+    int posSeen[5][4];
+    int posCount;
+    bool waitBlink; // PRESS START's phase (pd_ui_tick runs it)
     // BATTLE: INFO (0) or SUGGESTIONS (1); the FOE TEAM's slots seen so far
     // this battle (a bit each), the one tapped (-1 = follow the battle) and
     // the one shown (set by the draw); what the last read said was out / next.
@@ -204,6 +213,12 @@ struct pd_ui {
 void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings);
 // Follows the game: a battle opens BATTLE, its end goes back.
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s);
+// C-05: the game has not reached its field yet (the title screen, the intro,
+// the CONTINUE menu still loading the save), so PARTY, BAG, MAP and CARD wait.
+bool pd_ui_waiting(const struct pd_ui* ui);
+// The host loaded a savestate to start from: that moment was in the game, so
+// the waiting tabs show at once (the app's resume).
+void pd_ui_resumed(struct pd_ui* ui);
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host);
 // Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw.

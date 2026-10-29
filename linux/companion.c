@@ -421,8 +421,8 @@ const uint32_t* pd_companion_draw(struct pd_companion* c) {
     pd_canvas_init(&canvas, PD_COMPANION_W, PD_COMPANION_H, c->px);
     dbgTab = c->ui.tab;
     dbgOverlay = c->ui.overlay;
-    pd_logf("companion: draw tab %d overlay %d (party %d, bag %s)", c->ui.tab, c->ui.overlay, c->shown.partyCount,
-            c->shown.bagOk ? "yes" : "no");
+    pd_logf("companion: draw tab %d overlay %d (party %d, bag %s, waiting %d)", c->ui.tab, c->ui.overlay,
+            c->shown.partyCount, c->shown.bagOk ? "yes" : "no", pd_ui_waiting(&c->ui));
     if (c->game.cfg) {
         dbgHits = c->ui.hitCount;
         int i = focus_index(c);
@@ -453,6 +453,14 @@ void pd_companion_set_state(struct pd_companion* c, bool hasState, const char* w
     if (changed) {
         c->dirty = true;
     }
+}
+
+void pd_companion_resumed(struct pd_companion* c) {
+    if (!c) {
+        return;
+    }
+    pd_ui_resumed(&c->ui);
+    c->dirty = true;
 }
 
 int pd_companion_screen_mode(const struct pd_companion* c) {

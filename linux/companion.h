@@ -60,6 +60,10 @@ const uint32_t* pd_companion_draw(struct pd_companion* c);
 // What the SETTINGS tab's LOAD STATE row says about the slot on disk.
 void pd_companion_set_state(struct pd_companion* c, bool hasState, const char* when);
 
+// A savestate was loaded to start from (the resume), so the player is in the
+// game: the tabs that wait on a cold boot (C-05) show at once.
+void pd_companion_resumed(struct pd_companion* c);
+
 int pd_companion_screen_mode(const struct pd_companion* c); // PD_SCREEN_*
 void pd_companion_set_screen_mode(struct pd_companion* c, int mode);
 int pd_companion_ff_speed(const struct pd_companion* c);

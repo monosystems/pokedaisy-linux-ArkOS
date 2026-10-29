@@ -78,6 +78,13 @@ Those choices, and which tabs you put on the bar, live in `pokedaisy.ini` beside
 the ROM (`--settings FILE` for somewhere else); a missing or hand-edited file
 falls back to the defaults, and unknown keys are ignored.
 
+Before you are in the game - the game's title screen, its intro, `CONTINUE` still
+loading the save - `PARTY`, `BAG`, `MAP` and `CARD` wait: they show empty party
+slots, the app's window and a blinking `PRESS START` instead of whatever the RAM
+still holds from the last session. They fill in as soon as the game reads
+(walking, a battle, the save loaded), and a game resumed from where you left off
+shows at once; `log.txt` says `waiting 1` while they wait.
+
 What the companion can read is the portable core's list, not every game:
 FireRed, LeafGreen and Emerald, English, so far - `pd_game`'s game codes. Any
 other GBA game plays, and the overlay says so instead of guessing. Hacks over

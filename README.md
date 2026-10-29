@@ -23,8 +23,8 @@ dual-screen launcher, importing files, a setup wizard, update channels). Of the
 
 | | Features |
 | --- | --- |
-| Done | 61 |
-| Partial: narrower than the app | 26 |
+| Done | 62 |
+| Partial: narrower than the app | 25 |
 | Not started | 140 |
 
 **33%** counts a partial feature as a half. By area:

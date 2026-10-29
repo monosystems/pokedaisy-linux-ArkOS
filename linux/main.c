@@ -855,6 +855,9 @@ int main(int argc, char** argv) {
     if (!opts.noResume && resumePath[0] && pd_resume_is_fresh(resumePath, savePath)) {
         if (pd_state_load(core, resumePath)) {
             pd_logf("resume: carried on from %s", resumePath);
+            // C-05: that moment was in the game, so the companion's waiting
+            // tabs (title screen) show at once.
+            pd_companion_resumed(companion);
         }
     }
 

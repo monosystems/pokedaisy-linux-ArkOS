@@ -49,9 +49,13 @@ carries no per-game risk. About 29 rows, roughly +13 points.
       each drive their own animation or habit. The preview has them as
       `-settings-tabs*`, `-settings-tweaks*`, `-tab-slide-*` and `-battle-nojump`,
       and `PORTING.md` takes the icon bounce as C-P-04's half.*
-- [ ] **P1.3 Title screen.** `PARTY`, `BAG`, `MAP` and `CARD` show the game's empty
+- [x] **P1.3 Title screen.** `PARTY`, `BAG`, `MAP` and `CARD` show the game's empty
       slots with a blinking `PRESS START` instead of zeros, until the field is
       readable. (C-05)
+      *Done: the wait ends at a battle, a party, five map positions or a resume
+      the host loaded (the app's rule, less its field-callback check). The
+      preview has it as `-waiting-*`; the smoke test checks both ends: a cold
+      boot waits, a resumed one shows.*
 - [ ] **P1.4 Held item tag.** A thin bar with the item's icon and name on a party
       slot. (C-P-03)
 - [ ] **P1.5 Summary: EXP and matchups.** The `EXP` bar with `NEXT` / `MAX`, and the
