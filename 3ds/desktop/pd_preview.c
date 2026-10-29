@@ -291,6 +291,23 @@ int main(int argc, char** argv) {
             shot(out, name, "battle-suggest", px);
             tap(&p, HIT_BATTLE_INFO, 0);
         }
+        // The foe's matchups make the INFO pane taller than its window: a drag
+        // scrolls it to the rest of the moves (C-BT-03).
+        if (has_hit(&p, HIT_BATTLE_PANE)) {
+            drag(&p, HIT_BATTLE_PANE, -40);
+            if (ui.battleScroll > 0) shot(out, name, "battle-scrolled", px);
+            drag(&p, HIT_BATTLE_PANE, 400);
+            draw(&p);
+        }
+        // TWEAKS > BATTLE HINTS off: the verdicts and the foe's matchups go,
+        // the facts stay (C-BT-08).
+        unsigned hints = settings.tweaks;
+        settings.tweaks &= ~PD_TWEAK_BIT(PD_TWEAK_BATTLE_HINTS);
+        ui.battleScroll = 0;
+        draw(&p);
+        shot(out, name, "battle-nohints", px);
+        settings.tweaks = hints;
+        draw(&p);
         // TWEAKS > JUMP TO BATTLE off: the chip still leads the bar, but the
         // companion stays on the tab it was on (the app's switch).
         unsigned tweaks = settings.tweaks;

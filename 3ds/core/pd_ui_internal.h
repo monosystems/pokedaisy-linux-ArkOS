@@ -58,6 +58,7 @@ enum {
     HIT_NOTICE_BACK = 2902,
     HIT_BATTLE_SUGGEST = 3000,
     HIT_BATTLE_INFO = 3001,
+    HIT_BATTLE_PANE = 3002, // the INFO pane itself: a drag scrolls it
     HIT_FOE_SLOT = 3010,   // + foe party index
     HIT_OPEN_CARD = 3100,
     HIT_CARD = 3101,
@@ -111,6 +112,25 @@ uint32_t ui_type_color(int type);
 #define TYPE_CHIP_H 14
 int ui_type_chip_width(int type, const char* label);
 int ui_type_chip(struct pd_canvas* c, int x, int y, int type, const char* label);
+// A type against this mon, with its multiplier (the app's TypeMatchup).
+struct pd_matchup {
+    unsigned char type;
+    short pct;
+};
+// Every attacking type that isn't neutral, bucketed as the app does it: the
+// strongest weaknesses first, the weakest resistances first.
+struct pd_matchups {
+    struct pd_matchup weak[16], resist[16], immune[16];
+    int weakCount, resistCount, immuneCount;
+};
+void ui_matchups(int t1, int t2, struct pd_matchups* out);
+// The app's formatMultiplier, in the letters the port's font has (no ½ or ¼).
+void ui_pct_label(int pct, char* buf, size_t len);
+// WEAK TO / RESISTS / IMMUNE TO, each heading level with its chips (the app's
+// MatchupGroup in its inline form), wrapped inside w; a group with nothing in
+// it stays off. Returns how tall it came out; c NULL only measures.
+int ui_matchup_block(struct pd_canvas* c, int x, int y, int w, const struct pd_matchups* m);
+
 // A message in a list window across the content area.
 void ui_notice(struct pd_canvas* c, const char* title, const char* line1, const char* line2);
 // A LABEL  VALUE row, the value from ~42% across (OptionLine).

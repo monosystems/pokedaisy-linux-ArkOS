@@ -273,12 +273,12 @@ that frame.
 | --- | --- | --- | --- | --- | --- |
 | C-BT-01 | Opens by itself in a battle and gives the tab back afterwards | `battle.md` | ✅ | `pd_ui_update` follows the snapshot. |
 | C-BT-02 | `INFO`: both sides with the game's icons, your four moves with verdicts | `battle.md` | ✅ | `SUPER 2x`, `NEUTRAL 1x`, `RESISTED 1/2x`, `IMMUNE 0x`, `STATUS`, `NO PP`. |
-| C-BT-03 | `INFO`: the foe's weaknesses, and a tag on each side for the other side's threat | `battle.md` | — | The foe's `WEAK TO` / `RESISTS` plus the per-side tag (checked in V-16). `S` |
+| C-BT-03 | `INFO`: the foe's weaknesses, and a tag on each side for the other side's threat | `battle.md` | ✅ | The foe's card is followed by `WEAK TO` / `RESISTS` / `IMMUNE TO` chips (`ui_matchup_block`), the strongest weakness first, and each card carries a pill for the other side's own types (`ROCK 2x` in red, `RESISTS` in green, nothing when neutral). Narrower than the app: the pane is taller than its 156px window, so a drag scrolls it (the app scrolls too, on a bigger screen) and the second row of moves needs that drag. |
 | C-BT-04 | `INFO`: the foe's ability, held item, stats with boosts and moves | `battle.md` | — | The battle struct has the fields; decoding them is the work. `M` |
 | C-BT-05 | `SUGGESTIONS`: the three best picks with their best move | `battle.md` | ✅ | The app's ranking. |
 | C-BT-06 | `FOE TEAM`: the trainer's party in order, balls, fainted faded | `battle.md` | ✅ | `gEnemyParty` plus `gBattlerPartyIndexes`. |
 | C-BT-07 | Tapping a foe re-ranks INFO and SUGGESTIONS against it | `battle.md` | ✅ | `NEXT` / `FAINTED` / `RESERVE` / `UNSEEN`. |
-| C-BT-08 | `BATTLE HINTS` off (facts stay, verdicts go) | `battle.md` | — | One setting that suppresses the verdict text. `S` |
+| C-BT-08 | `BATTLE HINTS` off (facts stay, verdicts go) | `battle.md` | ✅ | A switch (`PD_TWEAK_BATTLE_HINTS`) that drops the move verdicts, the best pick's verdict and the foe's matchups; names, types, HP and PP stay. The app has the row in SETTINGS' battle group; the port's one-column SETTINGS would have to grow a page, so it sits in `TWEAKS` until C-SET-01 groups it. |
 | C-BT-09 | `ONE-TAP MOVES` | `battle.md` | — | Needs C-BT-11 first. `S` afterwards |
 | C-BT-10 | `FOE IVS`: a STATS page for the foe | `battle.md` | — | Shares C-P-09's decoding. `S` |
 | C-BT-11 | `FIGHT` / `BAG` / `RUN` / `POKéMON` buttons on your turn | `battle.md`, `BattleInputController` | — | Presses the game's own buttons at the right moment; needs the battle menu's state per game. `L` |

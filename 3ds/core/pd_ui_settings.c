@@ -98,12 +98,14 @@ static const char* const TWEAK_LABELS[PD_TWEAK_COUNT] = {
     [PD_TWEAK_MAP_CURSOR] = "MAP CURSOR BLINK",
     [PD_TWEAK_TAB_ANIM] = "TAB ANIMATIONS",
     [PD_TWEAK_JUMP_BATTLE] = "JUMP TO BATTLE",
+    [PD_TWEAK_BATTLE_HINTS] = "BATTLE HINTS",
 };
 static const char* const TWEAK_DESCS[PD_TWEAK_COUNT] = {
     [PD_TWEAK_PARTY_ICONS] = "Hold a party slot and its icon bounces",
     [PD_TWEAK_MAP_CURSOR] = "The MAP cursor pulses between two sizes",
     [PD_TWEAK_TAB_ANIM] = "Tabs slide in. Off: they switch at once",
     [PD_TWEAK_JUMP_BATTLE] = "A battle opens BATTLE, then goes back",
+    [PD_TWEAK_BATTLE_HINTS] = "Move ratings and the best pick in battle",
 };
 
 static void tweaks_page(struct pd_ui* ui, struct pd_canvas* c) {

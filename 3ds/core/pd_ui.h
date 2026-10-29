@@ -56,6 +56,10 @@ enum pd_tweak {
     PD_TWEAK_MAP_CURSOR,  // the MAP cursor swapping between its two sizes
     PD_TWEAK_TAB_ANIM,    // a tab sliding in instead of cutting
     PD_TWEAK_JUMP_BATTLE, // a battle opening BATTLE by itself
+    // C-BT-08: the app's BATTLE HINTS, the move verdicts and the best pick.
+    // A settings row there; the port's SETTINGS is one column, so it sits with
+    // the switches for now (P1.13 groups them).
+    PD_TWEAK_BATTLE_HINTS,
     PD_TWEAK_COUNT,
 };
 
@@ -213,6 +217,7 @@ struct pd_ui {
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
     int summaryPage; // enum pd_summary_page: the summary's page
+    int battleScroll; // the INFO pane's scroll: the foe's matchups push it past the window
     // BAG: the tab shown (PD_BAG_ALL, PD_BAG_FAVORITES or a PD_POCKET_*), the
     // row chosen in the list it builds, that list's scroll, the order button's
     // pick (enum bag_order), and the PC button's "not yet" line in the

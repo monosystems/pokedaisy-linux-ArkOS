@@ -150,14 +150,6 @@ static void page_chip(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w
     ui_add_hit(ui, x, y, w, 22, HIT_SUMMARY_PAGE + page);
 }
 
-// The app's formatMultiplier, in the letters the port's font has (no ½ or ¼).
-static void pct_label(int pct, char* buf, size_t len) {
-    if (pct == 25) snprintf(buf, len, "1/4x");
-    else if (pct == 50) snprintf(buf, len, "1/2x");
-    else if (pct % 100 == 0) snprintf(buf, len, "%dx", pct / 100);
-    else snprintf(buf, len, "%d%%", pct);
-}
-
 // An IV bar (the app's IvBar): a dark frame, the party bar's grey, the fill in
 // the HP colours and gold at a perfect 31.
 static void iv_bar(struct pd_canvas* c, int x, int y, int w, int iv) {
@@ -300,9 +292,8 @@ static void summary_stats(struct pd_canvas* c, const struct pd_mon* m, int ix, i
     pd_text(c, ix + 90 + chipW + 6, ty + 2, num, PD_VALUE, PD_VALUE_SHADOW);
 }
 
-// C-P-08: WEAK TO / RESISTS / IMMUNE TO, each heading level with its chips, a
-// chip carrying the type's name and the multiplier - the app's MatchupGroup in
-// its inline form. A group with nothing in it stays off the page.
+// C-P-08: WEAK TO / RESISTS / IMMUNE TO - the app's MatchupGroup in its inline
+// form, a chip per type with its multiplier (the work is the widgets').
 static void summary_matchups(struct pd_canvas* c, const struct pd_mon* m, int ix, int iw, int y, int h) {
     int t1, t2;
     pd_species_type_pair(m->species, &t1, &t2);
@@ -310,49 +301,11 @@ static void summary_matchups(struct pd_canvas* c, const struct pd_mon* m, int ix
         pd_text(c, ix, y, "This kind's types aren't known.", PD_MUTED, PD_MUTED_SHADOW);
         return;
     }
-    // Every real attacking type that isn't neutral (the app's typeMatchups,
-    // ??? passed over): the strongest weaknesses first and the weakest
-    // resistances first, in the game's type order within one multiplier.
-    static const unsigned char TYPES[17] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17 };
-    int list[3][17], count[3] = { 0, 0, 0 };
-    for (int k = 0; k < 17; k++) {
-        int pct = pd_type_multiplier_pct(TYPES[k], t1, t2);
-        if (pct == 100) continue;
-        int g = pct == 0 ? 2 : pct > 100 ? 0 : 1;
-        int at = count[g]++;
-        while (at > 0 && g != 2) {
-            int before = pd_type_multiplier_pct(list[g][at - 1], t1, t2);
-            if (g == 0 ? before >= pct : before <= pct) break;
-            list[g][at] = list[g][at - 1];
-            at--;
-        }
-        list[g][at] = TYPES[k];
-    }
-    static const char* const HEADINGS[3] = { "WEAK TO", "RESISTS", "IMMUNE TO" };
-    int bottom = y + h;
-    int cx = ix + 68, cy = y;
-    for (int g = 0; g < 3; g++) {
-        bool heading = true;
-        for (int k = 0; k < count[g]; k++) {
-            char label[12];
-            pct_label(pd_type_multiplier_pct(list[g][k], t1, t2), label, sizeof(label));
-            int w = ui_type_chip_width(list[g][k], label);
-            if (cx + w > ix + iw) {
-                cx = ix + 68;
-                cy += SUM_ROW;
-            }
-            if (cy + TYPE_CHIP_H > bottom) return;
-            if (heading) {
-                pd_text(c, ix, cy - 2, HEADINGS[g], PD_LABEL, PD_LABEL_SHADOW);
-                heading = false;
-            }
-            cx += ui_type_chip(c, cx, cy, list[g][k], label) + 4;
-        }
-        if (!heading) {
-            cy += SUM_ROW;
-            cx = ix + 68;
-        }
-    }
+    struct pd_matchups mm;
+    ui_matchups(t1, t2, &mm);
+    pd_clip(c, ix, y, iw, h);
+    ui_matchup_block(c, ix, y, iw, &mm);
+    pd_unclip(c);
 }
 
 static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m) {

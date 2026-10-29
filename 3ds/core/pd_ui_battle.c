@@ -69,15 +69,36 @@ static void icon(struct pd_canvas* c, const struct pd_game* g, int species, int 
 }
 
 // A card across w: icon, then [side] name ... [state] Lv on the first line,
-// types, HP bar and HP on the second.
+// types, HP bar and HP on the second. [threat] (the other side) adds the tag
+// for what that side's types do to this one (C-BT-03).
 static void card(struct pd_canvas* c, const struct pd_game* g, int x, int y, int w, const struct mon_view* m,
-                 const char* side, const char* state) {
+                 const char* side, const char* state, const struct mon_view* threat) {
     char buf[40];
     icon(c, g, m->species, x, y, false);
     int tx = x + PD_ICON + 8, right = x + w;
     int ty = y + 1;
     int nx = tx;
     if (side) nx += pd_text(c, nx, ty, side, PD_VALUE, PD_VALUE_SHADOW) + 5;
+    // C-BT-03's tag: the worst of the other side's own types against this one,
+    // or RESISTS when every one of them is resisted.
+    if (threat && threat->type1 != PD_TYPE_NONE && m->type1 != PD_TYPE_NONE) {
+        int worst = pd_type_multiplier_pct(threat->type1, m->type1, m->type2), worstType = threat->type1;
+        if (threat->type2 != PD_TYPE_NONE && threat->type2 != threat->type1) {
+            int p2 = pd_type_multiplier_pct(threat->type2, m->type1, m->type2);
+            if (p2 > worst) {
+                worst = p2;
+                worstType = threat->type2;
+            }
+        }
+        char label[24];
+        if (worst > 100) {
+            ui_pct_label(worst, buf, sizeof(buf));
+            snprintf(label, sizeof(label), "%s %s", pd_type_name(worstType), buf);
+            nx += pill(c, nx, ty, label, 0xD83828) + 4;
+        } else if (worst < 100) {
+            nx += pill(c, nx, ty, "RESISTS", 0x48A858) + 4;
+        }
+    }
     char lv[12];
     snprintf(lv, sizeof(lv), "Lv%d", m->level);
     int lvx = right - pd_text_width(lv);
@@ -259,13 +280,13 @@ static int rank(const struct pd_snapshot* s, const struct mon_view* foe, struct 
     return n;
 }
 
-static void suggestions(struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
+static void suggestions(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                         const struct mon_view* foe, const char* foeState, int ix, int iy, int iw, int ih) {
     if (!foe) {
         pd_text(c, ix, iy, "NO FOE ON THE FIELD", PD_MUTED, PD_MUTED_SHADOW);
         return;
     }
-    card(c, g, ix, iy, iw, foe, "VS", foeState);
+    card(c, g, ix, iy, iw, foe, "VS", foeState, NULL);
     int y = iy + ROW;
     rule(c, ix, y, iw);
     y += RULE;
@@ -303,31 +324,56 @@ static void suggestions(struct pd_canvas* c, const struct pd_game* g, const stru
         if (barW >= 16) ui_hp_bar(c, bx, ty + 5, barW, p->mon->hp, p->mon->maxHp);
         // Its best move against the foe.
         pd_fill(c, ix + half + RULE / 2, y + 2, 1, rowH - 4, PD_DIVIDER);
-        move_cell(c, ix + half + RULE, y + 1, iw - half - RULE, rowH - 2, p->move, p->pp, foe);
+        move_cell(c, ix + half + RULE, y + 1, iw - half - RULE, rowH - 2, p->move, p->pp,
+                  pd_tweak_on(ui->settings, PD_TWEAK_BATTLE_HINTS) ? foe : NULL);
         y += rowH;
     }
 }
 
 // --- INFO ---
 
-static void info(struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
+static void info(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                  const struct mon_view* foe, const char* foeState, const struct mon_view* you, int ix, int iy,
                  int iw, int ih) {
-    int y = iy;
-    if (foe) card(c, g, ix, y, iw, foe, s->isTrainer ? "FOE" : "WILD", foeState);
+    bool hints = pd_tweak_on(ui->settings, PD_TWEAK_BATTLE_HINTS);
+    // The foe's matchups under its card (C-BT-03); they take lines of their own,
+    // so the pane is taller than its window and a drag scrolls it, as the app's
+    // FoeDetailsColumn does.
+    struct pd_matchups mm;
+    int matchH = 0;
+    if (hints && foe) {
+        ui_matchups(foe->type1, foe->type2, &mm);
+        matchH = (mm.weakCount || mm.resistCount || mm.immuneCount) ? ui_matchup_block(NULL, ix, 0, iw, &mm) : 0;
+    }
+    int cellH = ROW; // a move cell: its name over its verdict
+    int content = ROW + matchH + RULE + ROW + RULE + 2 * cellH + 4;
+    if (content < ih) content = ih;
+    ui->battleScroll = ui_clamp_scroll(ui->battleScroll, content, ih);
+    pd_clip(c, ix, iy, iw, ih);
+    int y = iy - ui->battleScroll;
+    if (foe) card(c, g, ix, y, iw, foe, s->isTrainer ? "FOE" : "WILD", foeState, hints ? you : NULL);
     else pd_text(c, ix, y + 1, "NO FOE ON THE FIELD", PD_MUTED, PD_MUTED_SHADOW);
     y += ROW;
+    if (matchH && foe) {
+        ui_matchup_block(c, ix, y - 2, iw, &mm);
+        y += matchH;
+    }
     rule(c, ix, y, iw);
     y += RULE;
-    card(c, g, ix, y, iw, you, "YOU", "");
+    card(c, g, ix, y, iw, you, "YOU", "", hints ? foe : NULL);
     y += ROW;
     rule(c, ix, y, iw);
     y += RULE;
     int gap = 4;
-    int bw = (iw - gap) / 2, bh = (iy + ih - y - gap) / 2;
+    int bw = (iw - gap) / 2;
     for (int i = 0; i < PD_NUM_MOVES; i++) {
-        move_cell(c, ix + (i % 2) * (bw + gap), y + (i / 2) * (bh + gap), bw, bh, you->moves[i], you->pp[i], foe);
+        move_cell(c, ix + (i % 2) * (bw + gap), y + (i / 2) * (cellH + gap), bw, cellH, you->moves[i], you->pp[i],
+                  hints ? foe : NULL);
     }
+    pd_unclip(c);
+    // A scroll bar while the pane runs past its window, the lists' own mark.
+    if (content > ih) ui_scroll_bar(c, ix + iw - 4, iy, ih, ui->battleScroll, content, PD_MUTED);
+    ui_add_scroll_hit(ui, ix, iy, iw, ih, HIT_BATTLE_PANE);
 }
 
 void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
@@ -354,8 +400,8 @@ void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* 
     int h = barY - 4 - CONTENT_Y;
     int f = pd_title_box(c, x, CONTENT_Y, w, h, PD_TITLE_FILL);
     int ix = x + f + 4, iy = CONTENT_Y + f + 2, iw = w - 2 * (f + 4), ih = h - 2 * (f + 2);
-    if (ui->battlePane) suggestions(c, g, s, foe, foeState, ix, iy, iw, ih);
-    else info(c, g, s, foe, foeState, &you, ix, iy, iw, ih);
+    if (ui->battlePane) suggestions(ui, c, g, s, foe, foeState, ix, iy, iw, ih);
+    else info(ui, c, g, s, foe, foeState, &you, ix, iy, iw, ih);
 
     // The bar: the other pane's button, then the FOE TEAM.
     // One width for both, so the same spot flips back.

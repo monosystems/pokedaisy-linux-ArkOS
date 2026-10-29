@@ -35,6 +35,72 @@ uint32_t ui_type_color(int type) {
     return type >= 0 && type < 18 ? TYPE_COLORS[type] : PD_MUTED;
 }
 
+// Every real attacking type that isn't neutral against a (dual-typed)
+// defender, in the app's order: the strongest weaknesses first, the weakest
+// resistances first, the game's own type order within one multiplier.
+void ui_matchups(int t1, int t2, struct pd_matchups* out) {
+    static const unsigned char TYPES[17] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17 };
+    out->weakCount = out->resistCount = out->immuneCount = 0;
+    if (t1 == PD_TYPE_NONE) return;
+    for (int k = 0; k < 17; k++) {
+        int pct = pd_type_multiplier_pct(TYPES[k], t1, t2);
+        if (pct == 100) continue;
+        struct pd_matchup* list;
+        int* n;
+        if (pct == 0) { list = out->immune; n = &out->immuneCount; }
+        else if (pct > 100) { list = out->weak; n = &out->weakCount; }
+        else { list = out->resist; n = &out->resistCount; }
+        int at = (*n)++;
+        // Insertion by multiplier; the immune list keeps the type order.
+        while (at > 0 && pct != 0) {
+            int before = list[at - 1].pct;
+            if (list == out->weak ? before >= pct : before <= pct) break;
+            list[at] = list[at - 1];
+            at--;
+        }
+        list[at] = (struct pd_matchup) { (unsigned char) TYPES[k], (short) pct };
+    }
+}
+
+// The app's formatMultiplier, in the letters the port's font has (no ½ or ¼).
+void ui_pct_label(int pct, char* buf, size_t len) {
+    if (pct == 25) snprintf(buf, len, "1/4x");
+    else if (pct == 50) snprintf(buf, len, "1/2x");
+    else if (pct % 100 == 0) snprintf(buf, len, "%dx", pct / 100);
+    else snprintf(buf, len, "%d%%", pct);
+}
+
+// WEAK TO / RESISTS / IMMUNE TO, each heading level with its chips (the app's
+// MatchupGroup in its inline form), wrapped inside w; a group with nothing in
+// it stays off. Returns how tall it came out; c NULL only measures.
+int ui_matchup_block(struct pd_canvas* c, int x, int y, int w, const struct pd_matchups* m) {
+    static const char* const HEADINGS[3] = { "WEAK TO", "RESISTS", "IMMUNE TO" };
+    int cx = x + 60, cy = y;
+    for (int g = 0; g < 3; g++) {
+        const struct pd_matchup* list = g == 0 ? m->weak : g == 1 ? m->resist : m->immune;
+        int n = g == 0 ? m->weakCount : g == 1 ? m->resistCount : m->immuneCount;
+        bool heading = true;
+        for (int k = 0; k < n; k++) {
+            char label[12];
+            ui_pct_label(list[k].pct, label, sizeof(label));
+            int cw = ui_type_chip_width(list[k].type, label);
+            if (cx + cw > x + w) {
+                cx = x + 60;
+                cy += 16;
+            }
+            if (c && heading) pd_text(c, x, cy - 2, HEADINGS[g], PD_LABEL, PD_LABEL_SHADOW);
+            if (c) cx += ui_type_chip(c, cx, cy, list[k].type, label) + 4;
+            else cx += cw + 4;
+            heading = false;
+        }
+        if (!heading) {
+            cy += 16;
+            cx = x + 60;
+        }
+    }
+    return cy + 16 - y;
+}
+
 static void add(struct pd_ui* ui, int x, int y, int w, int h, int id, bool scroll) {
     if (ui->hitCount >= PD_UI_MAX_HITS) return;
     // While a tab slides in, its controls are drawn off their usual place:

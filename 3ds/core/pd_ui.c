@@ -400,6 +400,7 @@ static int* scroll_target(struct pd_ui* ui) {
     case PD_TAB_BAG: return &ui->bagScroll;
     case PD_TAB_DEX: return &ui->dexScroll;
     case PD_TAB_GUIDE: return &ui->guideScroll;
+    case PD_TAB_BATTLE: return &ui->battleScroll;
     default: return NULL;
     }
 }

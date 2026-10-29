@@ -109,8 +109,14 @@ carries no per-game risk. About 29 rows, roughly +13 points.
       list through the filter, and the entry's place beside the stepper
       (`6 / 386`). The preview shoots the filtered list as `-dex-filtered` and the
       counter in `-dex-entry` / `-dex-next`.*
-- [ ] **P1.11 Battle: the foe's side.** `WEAK TO` / `RESISTS`, the per-side threat
+- [x] **P1.11 Battle: the foe's side.** `WEAK TO` / `RESISTS`, the per-side threat
       tag, and `BATTLE HINTS` as a switch. (C-BT-03, C-BT-08)
+      *Done: the INFO pane lists the foe's matchups as chips under its card and
+      both cards carry the other side's threat pill (`ui_matchup_block`,
+      `ui_matchups` in `pd_ui_widgets.c`); the pane scrolls when they push it past
+      its window. `BATTLE HINTS` (TWEAKS, until SETTINGS gets the app's groups)
+      drops the verdicts, the best pick's verdict and the matchups. The preview
+      shoots `-battle-scrolled` and `-battle-nohints`.*
 - [ ] **P1.12 Guide: more of the app.** The `EVOLUTIONS` page, and the bosses after
       the next one as headers. (C-G-10, C-G-07)
 - [ ] **P1.13 Settings as the app has it.** Groups and pages instead of one column,
