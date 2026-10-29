@@ -235,7 +235,8 @@ that frame.
 | --- | --- | --- | --- | --- | --- |
 | C-D-01 | The list with seen and owned counts and a caught mark per row | `dex.md` | ✅ | `pd_ui_dex.c`; all entries open, seen or not. |
 | C-D-02 | Regional / National flip, starting on the save's own | `dex.md` | ✅ | A tap on the region name. |
-| C-D-03 | Filters: `ALL`, `CAUGHT`, `SEEN ONLY`, `NOT SEEN` | `dex.md` | — | The seen and owned flags are already read. `S` |
+| C-D-03 | Filters: `ALL`, `CAUGHT`, `SEEN ONLY`, `NOT SEEN` | `dex.md` | ✅ | A chip row under the title with each filter's count (`filter_row` in `pd_ui_dex.c`); the counts are the whole dex's, so they stay put while the filter changes, as in the app (V-09). A tap starts the list from its top. |
+| C-D-11 | Previous and next arrows with a counter | `dex.md` | ✅ | The arrows step through the list the filter leaves, with the entry's place beside them (`6 / 386`) - the app's `${index + 1} / ${entries.size}`. |
 | C-D-04 | Entry: number, name, picture, footprint, category, types, height and weight, dex text | `dex.md` | ◐ | Text as the ROM has it, images LZ77; the port draws no footprint. |
 | C-D-05 | Base stats with `TOTAL` and the `ABILITY` | `dex.md` | ✅ | `gBaseStats` and the ability name table. |
 | C-D-06 | `HIDDEN` ability | `dex.md` | — | Gen 3 retail has none, so this follows S-07 (hacks) and not the retail readers. |
@@ -243,7 +244,6 @@ that frame.
 | C-D-08 | `EVOLVE`: the family both ways with how each step happens | `dex.md`, `DexDetails.kt` | ✅ | FireRed rev 1 and Emerald; LeafGreen has no table in the port's config. The app writes the condition as `LU n`, the port as `LV n`, so align the label. |
 | C-D-09 | `AREA`: wild places by method with odds, plus gifts and trades | `dex.md` | — | The wild tables are read for HERE already, so this is a second view. `M` |
 | C-D-10 | `MOVES`: level-up list plus TMs and HMs | `dex.md` | — | `LEVEL UP` with level, name and type chip, then `TM / TUTOR` or `NONE` (V-11). Learnsets are in the config (`gLevelUpLearnsets`); the TM half needs `tmhmLearnsets`. `M` |
-| C-D-11 | Previous and next arrows with a counter | `dex.md` | — | `S` |
 | C-D-12 | The open section stays open while stepping through entries | `dex.md` | ✅ | The EVOLVE section survives a step. |
 
 ### GUIDE

@@ -45,6 +45,7 @@ enum {
     HIT_DEX_INFO = 1903,    // the entry's INFO / EVOLVE section chips
     HIT_DEX_EVOLVE = 1904,
     HIT_DEX_EVO_LIST = 1905,
+    HIT_DEX_FILTER = 1906, // + enum dex_filter: the list's ALL / CAUGHT / SEEN ONLY / NOT SEEN chips
     HIT_DEX_EVO_ROW = 1910, // + family link
     HIT_GUIDE_PAGE = 2000, // + page
     HIT_GUIDE_ROW = 2100,  // + entry

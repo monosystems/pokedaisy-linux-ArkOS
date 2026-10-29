@@ -424,6 +424,13 @@ int main(int argc, char** argv) {
         ui.tab = PD_TAB_DEX;
         draw(&p);
         shot(out, name, "dex", px);
+        // The filters with their counts (C-D-03): CAUGHT leaves the caught
+        // ones only, and the list starts again from its top.
+        if (has_hit(&p, HIT_DEX_FILTER + 1)) {
+            tap(&p, HIT_DEX_FILTER + 1, 0);
+            shot(out, name, "dex-filtered", px);
+            tap(&p, HIT_DEX_FILTER, 0);
+        }
         if (game.rom && has_hit(&p, HIT_DEX_LIST)) {
             drag(&p, HIT_DEX_LIST, -120);
             shot(out, name, "dex-scrolled", px);

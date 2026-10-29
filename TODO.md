@@ -88,8 +88,13 @@ carries no per-game risk. About 29 rows, roughly +13 points.
 - [ ] **P1.9 Bag: the game's own look.** Yellow pockets with `PC` and the order
       button under them, instead of one pocket in a white list. (C-B-01) — the visual
       half of the tab, worth doing before more bag features land on it.
-- [ ] **P1.10 Dex: filters and arrows.** The filter list with a count per filter and
+- [x] **P1.10 Dex: filters and arrows.** The filter list with a count per filter and
       the previous and next arrows with the counter. (C-D-03, C-D-11)
+      *Done: a chip row under the POKéDEX title (`filter_row` in `pd_ui_dex.c`)
+      with `ALL`, `CAUGHT`, `SEEN ONLY` and `NOT SEEN` and each one's count, the
+      list through the filter, and the entry's place beside the stepper
+      (`6 / 386`). The preview shoots the filtered list as `-dex-filtered` and the
+      counter in `-dex-entry` / `-dex-next`.*
 - [ ] **P1.11 Battle: the foe's side.** `WEAK TO` / `RESISTS`, the per-side threat
       tag, and `BATTLE HINTS` as a switch. (C-BT-03, C-BT-08)
 - [ ] **P1.12 Guide: more of the app.** The `EVOLUTIONS` page, and the bosses after

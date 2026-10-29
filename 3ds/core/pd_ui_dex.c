@@ -9,7 +9,9 @@
 #include "pd_ui_internal.h"
 
 #define TITLE_H 24
-#define LIST_Y (CONTENT_Y + TITLE_H + 4)
+#define FILTER_Y (CONTENT_Y + TITLE_H + 2)
+#define FILTER_H 18
+#define LIST_Y (FILTER_Y + FILTER_H + 2)
 #define DEX_ROW 18
 #define TOGGLE_W 78
 
@@ -18,17 +20,34 @@ static bool national_view(const struct pd_ui* ui, const struct pd_snapshot* s) {
     return ui->dexNational >= 0 ? ui->dexNational : s->dexNational;
 }
 
-// The list: national numbers in the order shown; returns how many.
-static int dex_list(const struct pd_game* g, bool national, int* out) {
+// The dex's filters (the app's DexFilter): everything, caught, seen but not
+// caught, never seen.
+enum dex_filter { DEX_ALL, DEX_CAUGHT, DEX_SEEN, DEX_UNSEEN, DEX_FILTERS };
+static const char* const FILTER_LABELS[DEX_FILTERS] = { "ALL", "CAUGHT", "SEEN ONLY", "NOT SEEN" };
+
+// Whether [nat] belongs on the list under [filter] - the app's DexUiState.entries.
+static bool filter_takes(const struct pd_snapshot* s, int nat, int filter) {
+    bool seen = pd_dex_seen(s, nat), caught = pd_dex_caught(s, nat);
+    switch (filter) {
+    case DEX_CAUGHT: return caught;
+    case DEX_SEEN: return seen && !caught;
+    case DEX_UNSEEN: return !seen;
+    default: return true;
+    }
+}
+
+// The list: national numbers in the order shown, through the filter; returns
+// how many.
+static int dex_list(const struct pd_game* g, const struct pd_snapshot* s, bool national, int filter, int* out) {
     int n = 0;
     if (national) {
         for (int i = 1; i <= PD_NATIONAL_COUNT; i++) {
-            if (pd_dex_species(g, i)) out[n++] = i;
+            if (pd_dex_species(g, i) && filter_takes(s, i, filter)) out[n++] = i;
         }
     } else {
         for (int i = 1; i <= g->cfg->regionalCount; i++) {
             int nat = pd_dex_regional(g, i);
-            if (nat) out[n++] = nat;
+            if (nat && filter_takes(s, nat, filter)) out[n++] = nat;
         }
     }
     return n;
@@ -43,17 +62,42 @@ static int shown_number(const struct pd_game* g, bool national, int nat) {
     return nat;
 }
 
+// The whole dex's entry, seen and caught counts. The filter leaves the title's
+// numbers and the filters' own counts alone (V-09).
+static void dex_counts(const struct pd_game* g, const struct pd_snapshot* s, bool national, int* all, int* seen,
+                       int* caught) {
+    int n = 0, se = 0, ca = 0;
+    for (int i = 1; i <= (national ? PD_NATIONAL_COUNT : g->cfg->regionalCount); i++) {
+        int nat = national ? i : pd_dex_regional(g, i);
+        if (!nat || !pd_dex_species(g, nat)) continue;
+        n++;
+        se += pd_dex_seen(s, nat);
+        ca += pd_dex_caught(s, nat);
+    }
+    *all = n;
+    *seen = se;
+    *caught = ca;
+}
+
+// A section chip (INFO / EVOLVE, and the dex's filters): white with red text
+// when open, like the tab bar's, grey otherwise.
+static void section_chip(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label,
+                         int id, bool open) {
+    pd_title_box(c, x, y, w, h, open || ui->pressedId == id ? PD_TITLE_FILL : PD_LIST_FILL);
+    int tw = pd_text_width(label);
+    pd_text(c, x + (w - tw) / 2, pd_text_y(y, h), label, open ? PD_VALUE : PD_TITLE_TEXT,
+            open ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
+    ui_add_hit(ui, x, y, w, h, id);
+}
+
 static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
-                  const int* list, int n, bool national) {
+                  bool national) {
     int x = MARGIN, w = c->w - 2 * MARGIN - TOGGLE_W - 4;
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
     pd_text(c, x + f + 6, ty, "POKéDEX", PD_TITLE_TEXT, PD_TITLE_SHADOW);
-    int seen = 0, caught = 0;
-    for (int i = 0; i < n; i++) {
-        seen += pd_dex_seen(s, list[i]);
-        caught += pd_dex_caught(s, list[i]);
-    }
+    int all, seen, caught;
+    dex_counts(g, s, national, &all, &seen, &caught);
     char counts[40];
     snprintf(counts, sizeof(counts), "SEEN %d  OWN %d", seen, caught);
     pd_text_right(c, x + w - f - 6, ty, counts, PD_VALUE, PD_VALUE_SHADOW);
@@ -62,6 +106,28 @@ static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     snprintf(other, sizeof(other), "%s", national ? g->cfg->regionName : "NATIONAL");
     ui_button(ui, c, x + w + 4, CONTENT_Y, TOGGLE_W, TITLE_H, other, HIT_DEX_TOGGLE);
 }
+
+// The four filters with how many entries each one leaves (the app's counts):
+// ALL, CAUGHT, SEEN ONLY, NOT SEEN. The counts are the whole dex's, so they
+// stay put while the filter changes (V-09).
+static void filter_row(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
+                       bool national) {
+    int all, seen, caught;
+    dex_counts(g, s, national, &all, &seen, &caught);
+    int have[DEX_FILTERS] = { all, caught, seen - caught, all - seen };
+    int x = MARGIN, right = c->w - MARGIN;
+    for (int i = 0; i < DEX_FILTERS; i++) {
+        char label[32];
+        snprintf(label, sizeof(label), "%s %d", FILTER_LABELS[i], have[i]);
+        int w = pd_text_width(label) + 6;
+        // The row is even: the chips run from the left edge and the last one
+        // ends at the right one.
+        int cx = i == DEX_FILTERS - 1 ? right - w : x;
+        section_chip(ui, c, cx, FILTER_Y, w, FILTER_H, label, HIT_DEX_FILTER + i, ui->dexFilter == i);
+        x += w + 4;
+    }
+}
+
 
 // The list shown (rebuilt each draw), kept for the tap handler, which has no
 // game at hand: the toggle flips what shows, up / down step through it.
@@ -72,7 +138,8 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
     const int* list = lastList;
     int n = lastCount;
     bool national = lastNational;
-    title(ui, c, g, s, list, n, national);
+    title(ui, c, g, s, national);
+    filter_row(ui, c, g, s, national);
 
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int f = pd_list_box(c, x, LIST_Y, w, c->h - LIST_Y - MARGIN);
@@ -110,26 +177,24 @@ static void draw_sprite(struct pd_canvas* c, int x, int y, const uint32_t* px) {
     }
 }
 
-// A section chip (INFO / EVOLVE): white with red text when open, like the tab
-// bar's, grey otherwise.
-static void section_chip(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label,
-                         int id, bool open) {
-    pd_title_box(c, x, y, w, h, open || ui->pressedId == id ? PD_TITLE_FILL : PD_LIST_FILL);
-    int tw = pd_text_width(label);
-    pd_text(c, x + (w - tw) / 2, pd_text_y(y, h), label, open ? PD_VALUE : PD_TITLE_TEXT,
-            open ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
-    ui_add_hit(ui, x, y, w, h, id);
-}
-
 // The entry's bottom row: its sections on the left (the app's DexSectionChips),
-// stepping through the list and BACK on the right.
+// stepping through the list and BACK on the right. Between them the entry's
+// place in that list ("12 / 386", the app's counter beside the arrows).
 static void entry_buttons(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, int f, bool evos) {
     int byBtn = y + h - f - 26;
     int sx = x + f + 2;
     section_chip(ui, c, sx, byBtn, 40, 22, "INFO", HIT_DEX_INFO, ui->dexSection == 0);
     if (evos) section_chip(ui, c, sx + 43, byBtn, 58, 22, "EVOLVE", HIT_DEX_EVOLVE, ui->dexSection == 1);
-    ui_button(ui, c, x + w - f - 70 - 2 * 40, byBtn, 36, 22, "", HIT_DEX_PREV);
-    pd_triangle(c, x + w - f - 70 - 2 * 40 + 13, byBtn + 7, 6, PD_UP, PD_TITLE_TEXT);
+    int arrows = x + w - f - 70 - 2 * 40;
+    for (int i = 0; i < lastCount; i++) {
+        if (lastList[i] != ui->dexOpen) continue;
+        char at[24];
+        snprintf(at, sizeof(at), "%d / %d", i + 1, lastCount);
+        pd_text_right(c, arrows - 8, byBtn + 3, at, PD_MUTED, PD_MUTED_SHADOW);
+        break;
+    }
+    ui_button(ui, c, arrows, byBtn, 36, 22, "", HIT_DEX_PREV);
+    pd_triangle(c, arrows + 13, byBtn + 7, 6, PD_UP, PD_TITLE_TEXT);
     ui_button(ui, c, x + w - f - 70 - 40, byBtn, 36, 22, "", HIT_DEX_NEXT);
     pd_triangle(c, x + w - f - 70 - 40 + 13, byBtn + 8, 6, PD_DOWN, PD_TITLE_TEXT);
     ui_button(ui, c, x + w - f - 66, byBtn, 62, 22, "BACK", HIT_BACK);
@@ -288,7 +353,8 @@ void ui_dex_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         return;
     }
     lastNational = national_view(ui, s);
-    lastCount = dex_list(g, lastNational, lastList);
+    if (ui->dexFilter < 0 || ui->dexFilter >= DEX_FILTERS) ui->dexFilter = DEX_ALL;
+    lastCount = dex_list(g, s, lastNational, ui->dexFilter, lastList);
     if (ui->dexOpen) {
         entry_view(ui, c, g, s);
     } else {
@@ -308,6 +374,12 @@ bool ui_dex_act(struct pd_ui* ui, int id) {
         ui->dexOpen = id - HIT_DEX_ROW;
         ui->dexSection = 0;
         ui->dexEvoScroll = 0;
+        return true;
+    }
+    if (id >= HIT_DEX_FILTER && id < HIT_DEX_FILTER + DEX_FILTERS) {
+        // A filter chip: the list starts again from its top.
+        ui->dexFilter = id - HIT_DEX_FILTER;
+        ui->dexScroll = 0;
         return true;
     }
     if (id == HIT_DEX_INFO || id == HIT_DEX_EVOLVE) {
