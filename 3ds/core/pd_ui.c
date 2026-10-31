@@ -77,10 +77,9 @@ static bool tab_on_bar(const struct pd_ui* ui, enum pd_tab t) {
     return false;
 }
 
-// The bar from what this game has and what the player picked (SETTINGS > TAB
-// BAR): the picks first, in the app's order, then the game's other tabs fill
-// the places left over. BATTLE leads a battle and takes one of the places, and
-// what is left waits behind MORE (C-02, C-03, C-04).
+// Only the player's picks sit on the bar. Hidden tabs stay in MORE even when
+// there is room: otherwise a HIDDEN switch appears not to do anything.
+// BATTLE leads a battle and takes one of the places.
 static void layout(struct pd_ui* ui, const struct pd_game* g) {
     int room = PD_BAR_TABS - (ui->battleWasOn ? 1 : 0);
     bool on[PD_TAB_COUNT] = { false };
@@ -89,18 +88,13 @@ static void layout(struct pd_ui* ui, const struct pd_game* g) {
     ui->tabsPicked = 0;
     if (ui->battleWasOn) ui->bar[ui->barCount++] = PD_TAB_BATTLE;
     int seated = 0;
-    for (int pass = 0; pass < 2; pass++) {
-        for (int i = 0; i < PD_TAB_ORDER_COUNT; i++) {
-            enum pd_tab t = PD_TAB_ORDER[i];
-            if (!pd_tab_available(g, t)) continue;
-            bool picked = pd_tab_shown(ui->settings, t);
-            if (pass == 0 && picked) ui->tabsPicked++;
-            if (pass == 0 ? !picked : picked) continue;
-            if (on[t]) continue;
-            if (seated >= room) continue;
-            on[t] = true;
-            seated++;
-        }
+    for (int i = 0; i < PD_TAB_ORDER_COUNT; i++) {
+        enum pd_tab t = PD_TAB_ORDER[i];
+        if (!pd_tab_available(g, t) || !pd_tab_shown(ui->settings, t)) continue;
+        ui->tabsPicked++;
+        if (seated >= room) continue;
+        on[t] = true;
+        seated++;
     }
     for (int i = 0; i < PD_TAB_ORDER_COUNT; i++) {
         enum pd_tab t = PD_TAB_ORDER[i];
@@ -108,14 +102,13 @@ static void layout(struct pd_ui* ui, const struct pd_game* g) {
         if (on[t]) ui->bar[ui->barCount++] = t;
         else ui->more[ui->moreCount++] = t;
     }
-    // A tab this game lost, or one the bar gave up and MORE doesn't hold,
-    // falls back to the first chip - the app's `current`. PARTY is in every
-    // game's bar, so there always is one.
+    // A tab the game lost falls back to a reachable page, including when the
+    // player hid every tab and the bar has no regular chips at all.
     bool ok = (ui->tab == PD_TAB_MORE) ? ui->moreCount > 0
             : ui->tab == PD_TAB_SETTINGS;
     for (int i = 0; !ok && i < ui->barCount; i++) ok = ui->bar[i] == ui->tab;
     for (int i = 0; !ok && i < ui->moreCount; i++) ok = ui->more[i] == ui->tab;
-    if (!ok) ui->tab = ui->bar[0];
+    if (!ok) ui->tab = ui->barCount ? ui->bar[0] : ui->moreCount ? PD_TAB_MORE : PD_TAB_SETTINGS;
 }
 
 // The SETTINGS gear, 11x11 (bit 0 = left):
@@ -192,11 +185,11 @@ void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
     // C-05: before the field (the game's title screen, its intro, CONTINUE
     // loading the save) the save's tabs must not show what the RAM still holds.
-    // The app ends the wait at the field's own callback, a battle or five map
-    // positions; the port reads no callback, so it takes a battle, a party (one
-    // only a loaded save has) or the fifth position.
+    // The app ends the wait at the field's own callback, a battle or movement.
+    // Party data alone is not proof of being on the field: it may already be
+    // present while the title or continue screen is still showing.
     if (!ui->started && s->valid) {
-        if (s->inBattle || s->partyCount > 0) {
+        if (s->inBattle) {
             ui->started = true;
         } else if (s->posOk) {
             bool known = false;
@@ -289,8 +282,9 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_
     // first chips, so the row ends at the content's right edge.
     int gaps = CHIP_GAP * (ui->barCount + more + 1);
     int room = c->w - 2 * MARGIN - gaps - ICON_W * (2 + more);
-    int w = room / ui->barCount, rem = room - w * ui->barCount;
-    int x = MARGIN;
+    int w = ui->barCount ? room / ui->barCount : 0;
+    int rem = room - w * ui->barCount;
+    int x = ui->barCount ? MARGIN : c->w - MARGIN - ICON_W * (2 + more) - CHIP_GAP * (1 + more);
     for (int i = 0; i < ui->barCount; i++) {
         enum pd_tab t = ui->bar[i];
         int ww = w + (i < rem ? 1 : 0);
@@ -590,8 +584,6 @@ bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down) {
 
 void pd_ui_next_tab(struct pd_ui* ui, int dir) {
     if (ui->overlay != PD_OVERLAY_NONE) return;
-    // Nothing to step along before the first draw built the bar.
-    if (!ui->barCount) return;
     // The bar's chips, then MORE, then the gear; a tab MORE holds steps as
     // MORE does, since that is where its chip is (the app's barIndex).
     enum pd_tab order[PD_BAR_TABS + 3];

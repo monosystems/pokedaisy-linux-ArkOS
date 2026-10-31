@@ -243,8 +243,10 @@ int main(int argc, char** argv) {
     pd_ui_init(&ui, &settings);
     shotUi = &ui;
     pd_ui_update(&ui, &snap);
+    // These fixtures represent a game already on the field, not its boot.
+    pd_ui_resumed(&ui);
 
-    struct pd_host_info host = { .count = 2, .hasState = true };
+    struct pd_host_info host = { .count = 2, .hasState = true, .hasStatusBar = true, .hasLibrary = true };
     host.labels[0] = "SOURCE";
     snprintf(host.values[0], sizeof(host.values[0]), "%s", name);
     host.labels[1] = "SPEED";
@@ -697,8 +699,7 @@ int main(int argc, char** argv) {
     printf("the blink flipped: %d\n", ui.waitBlink != was);
     draw(&p);
     shot(out, name, "waiting-blink", px);
-    // Walking ends the wait too (the app's five map positions), and so does the
-    // first sample of a loaded save.
+    // Walking ends the wait after five positions.
     for (int i = 0; i < 5; i++) {
         struct pd_snapshot walk = boot;
         walk.posOk = true;
@@ -710,9 +711,13 @@ int main(int argc, char** argv) {
     ui.tab = PD_TAB_PARTY;
     ui.started = false;
     ui.posCount = 0;
-    pd_ui_update(&ui, &snap);
-    printf("waiting after the party read: %d\n", pd_ui_waiting(&ui));
+    struct pd_snapshot titleWithParty = snap;
+    titleWithParty.inBattle = false;
+    titleWithParty.posOk = false;
+    pd_ui_update(&ui, &titleWithParty);
+    printf("waiting with party data before the field: %d\n", pd_ui_waiting(&ui));
     draw(&p);
+    shot(out, name, "waiting-party-data", px);
 
     // The decoded party, for checking against the app's tests.
     for (int i = 0; i < snap.partyCount; i++) {
