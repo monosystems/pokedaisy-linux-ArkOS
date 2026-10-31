@@ -19,8 +19,43 @@ trap 'rm -rf "$work"' EXIT
 
 python3 "$here/make_smoke_rom.py" "$work/smoke.gba"
 
+# Exercise backup ordering and restoration without an emulator or real saves.
+mkdir -p "$work/files/pokedaisy-states"
+${CC:-cc} -std=c11 -D_POSIX_C_SOURCE=200809L -I"$root/linux" -I"$root/3ds/core" \
+    "$here/files_test.c" "$root/linux/files.c" "$root/linux/log.c" \
+    "$root/3ds/core/pd_settings.c" -o "$work/files-test"
+"$work/files-test" "$work/files"
+
+# Exercise the library's real navigation, including cancel and restoration.
+mkdir -p "$work/library/pokedaisy-states"
+${CC:-cc} -std=c11 -D_POSIX_C_SOURCE=200809L -DCOLOR_16_BIT -DCOLOR_5_6_5 \
+    -I"$root/linux" -I"$root/3ds/core" -I"$root/third_party/mgba/include" -I"$build/mgba/include" \
+    $(pkg-config --cflags sdl2) "$here/library_test.c" "$root/linux/menu.c" "$root/linux/files.c" \
+    "$root/linux/log.c" "$root/3ds/core/pd_canvas.c" "$root/3ds/core/pd_font_gen.c" \
+    "$root/3ds/core/pd_menu.c" "$root/3ds/core/pd_style.c" $(pkg-config --libs sdl2) -lm -o "$work/library-test"
+SDL_VIDEODRIVER=dummy "$work/library-test" "$work/library"
+
+# The actual Linux cursor must reach every item, including clipped rows.
+${CC:-cc} -std=c11 -D_POSIX_C_SOURCE=200809L -I"$root/linux" -I"$root/3ds/core" -I"$root/3ds/desktop" \
+    $(pkg-config --cflags sdl2) "$here/companion_bag_test.c" "$root/linux/companion.c" \
+    "$root/linux/files.c" "$root/linux/log.c" "$root/3ds/desktop/pd_png.c" "$root"/3ds/core/*.c \
+    $(pkg-config --libs sdl2) -lm -o "$work/companion-bag-test"
+"$work/companion-bag-test" "$root/app/src/test/resources/fixtures/firered_vanilla" "$work/bag-fr.ini" BPRE
+"$work/companion-bag-test" "$root/app/src/test/resources/fixtures/emerald_vanilla" "$work/bag-em.ini" BPEE
+fr_rom="$root/3ds/build/decomps/pokefirered/pokefirered_rev1.gba"
+[ -f "$fr_rom" ] && "$work/companion-bag-test" "$root/app/src/test/resources/fixtures/firered_vanilla" \
+    "$work/dex-fr.ini" BPRE "$fr_rom"
+
 "$build/pokedaisy" "$work/smoke.gba" --headless --frames 10 --test-fill --no-resume \
     --screenshot "$work/game.png" --log "$work/game.log"
+
+printf 'status_bar=1\n' > "$work/status.ini"
+# The bar's name comes from the detected game, not the download's file name.
+cp "$work/smoke.gba" "$work/Pokemon - Fire Red Version (U) (V1.1).gba"
+"$build/pokedaisy" "$work/Pokemon - Fire Red Version (U) (V1.1).gba" --headless --frames 10 --test-fill --no-resume \
+    --settings "$work/status.ini" --screenshot "$work/status.png" --log "$work/status.log"
+"$build/pokedaisy" "$work/smoke.gba" --headless --frames 10 --companion --no-resume \
+    --settings "$work/status.ini" --screenshot "$work/status-companion.png" --log "$work/status-companion.log"
 
 "$build/pokedaisy" "$work/smoke.gba" --headless --frames 10 --companion --no-resume \
     --screenshot "$work/party.png" --log "$work/party.log"
@@ -41,6 +76,16 @@ python3 "$here/make_smoke_rom.py" "$work/smoke.gba"
 # state are screens too (picked here without a pad, to keep the run headless).
 mkdir -p "$work/roms"
 cp "$work/smoke.gba" "$work/roms/Pokemon Test.gba"
+printf 'test save' > "$work/roms/Pokemon Test.sav"
+printf 'older save' > "$work/roms/Pokemon Test.backup-20200101-000000.sav"
+PD_TEST_MENU_VIEW=info "$build/pokedaisy" --headless --roms "$work/roms" --pick test --menu-shot "$work/info.png" \
+    --frames 1 --no-resume --log "$work/info.log"
+PD_TEST_MENU_VIEW=backups "$build/pokedaisy" --headless --roms "$work/roms" --pick test --menu-shot "$work/backups.png" \
+    --frames 1 --no-resume --log "$work/backups.log"
+PD_TEST_MENU_VIEW=confirm "$build/pokedaisy" --headless --roms "$work/roms" --pick test --menu-shot "$work/confirm.png" \
+    --frames 1 --no-resume --log "$work/confirm.log"
+PD_TEST_MENU_VIEW=playing "$build/pokedaisy" --headless --roms "$work/roms" --pick test --menu-shot "$work/playing.png" \
+    --frames 1 --no-resume --log "$work/playing.log"
 "$build/pokedaisy" --headless --roms "$work/roms" --pick test --menu-shot "$work/menu.png" \
     --frames 4 --screenshot "$work/menu-game.png" --log "$work/menu.log"
 
@@ -103,6 +148,15 @@ w, h, game, grow = decode(os.path.join(work, 'game.png'))
 assert (w, h) == (640, 480), f'{w}x{h}, wanted 640x480'
 assert pixel(game, grow, w // 2, h // 2) == b'\xff\x00\x00', 'the game frame is not red'
 
+_, _, status, srow = decode(os.path.join(work, 'status.png'))
+# The OPTION title window's white fill inside its frame, in the strip's row.
+assert pixel(status, srow, w // 2, 10) == b'\xff\xff\xff', 'the status bar is not shown'
+assert pixel(status, srow, w // 2, 30) != b'\xff\x00\x00', 'the status bar is shorter than its row'
+assert pixel(status, srow, w // 2, h // 2) == b'\xff\x00\x00', 'the status bar covered the game'
+status_log = open(os.path.join(work, 'status.log')).read()
+assert 'status: game FIRERED' in status_log, 'the bar used the file name instead of the game name'
+assert 'POKEMON - FIRE' not in status_log, 'the file name leaked into the bar'
+
 pw, ph, party, prow = decode(os.path.join(work, 'party.png'))
 assert (pw, ph) == (640, 480)
 bright = sum(1 for y in range(0, ph, 2) for x in range(0, pw, 2) if min(pixel(party, prow, x, y)) > 200)
@@ -110,6 +164,8 @@ assert bright > 200, f'the companion drew almost no text ({bright} bright pixels
 colours = {party[y * prow + 1 + x * 3:y * prow + 4 + x * 3] for y in range(0, ph, 4) for x in range(0, pw, 4)}
 assert len(colours) >= 4, f'the companion screen looks flat ({len(colours)} colours)'
 assert party != game, 'the companion did not draw over the game'
+_, _, status_party, _ = decode(os.path.join(work, 'status-companion.png'))
+assert status_party == party, 'the status bar covered the companion'
 # C-05: this ROM never reaches a field, so the save's tabs wait.
 assert 'waiting 1' in open(os.path.join(work, 'party.log')).read(), 'a cold boot did not wait'
 
@@ -133,6 +189,14 @@ for shot in ('menu.png', 'menu-empty.png'):
     assert (mw, mh) == (640, 480), f'{shot}: {mw}x{mh}'
     bright = sum(1 for y in range(0, mh, 2) for x in range(0, mw, 2) if min(pixel(menu, mrow, x, y)) > 200)
     assert bright > 200, f'{shot}: the list drew almost no text ({bright} bright pixels)'
+
+_, _, info, _ = decode(os.path.join(work, 'info.png'))
+_, _, backups, _ = decode(os.path.join(work, 'backups.png'))
+_, _, confirm, _ = decode(os.path.join(work, 'confirm.png'))
+assert info != backups and info != confirm and backups != confirm, 'library pages did not change'
+_, _, playing, _ = decode(os.path.join(work, 'playing.png'))
+_, _, menu, _ = decode(os.path.join(work, 'menu.png'))
+assert playing != menu, 'the playing marker did not change the library list'
 
 menu_log = open(os.path.join(work, 'menu.log')).read()
 assert 'menu: 1 game(s)' in menu_log, 'the list did not find the one game'

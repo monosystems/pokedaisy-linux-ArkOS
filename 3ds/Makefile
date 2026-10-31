@@ -15,7 +15,14 @@ CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror
 CORE_SRC := $(wildcard core/*.c)
 DEVKITARM_IMAGE := devkitpro/devkitarm:latest
 
-.PHONY: preview 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+.PHONY: preview p1-test 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+
+$(BUILD)/p1_test: $(CORE_SRC) $(wildcard core/*.h) test/p1_test.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -Icore -o $@ $(CORE_SRC) test/p1_test.c -lm
+
+p1-test: $(BUILD)/p1_test
+	$(BUILD)/p1_test $(BUILD)/p1-test-settings.ini $(call rom_if,$(FR_ROM))
 
 $(BUILD)/pd_preview: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_preview.c desktop/pd_png.c desktop/pd_png.h
 	@mkdir -p $(BUILD)
