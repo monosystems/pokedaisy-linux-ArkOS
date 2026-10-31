@@ -703,7 +703,7 @@ int main(int argc, char** argv) {
             }
         }
         pd_logf("pokedaisy: no game given, listing %s", opts.romsDir);
-        if (!pd_pick_rom(opts.romsDir, opts.pick, opts.menuShot, chosen, sizeof(chosen), render, input)) {
+        if (!pd_pick_rom(opts.romsDir, opts.pick, opts.menuShot, chosen, sizeof(chosen), render, input, NULL)) {
             pd_logf("menu: no game picked");
             status = 0;
             goto cleanup;
@@ -1040,6 +1040,25 @@ int main(int argc, char** argv) {
             core->reset(core);
             pd_companion_restarted(companion);
             break;
+        case PD_ACTION_LIBRARY: {
+            char dir[PD_PATH_MAX];
+            const char* slash = strrchr(opts.rom, '/');
+            if (!slash) snprintf(dir, sizeof(dir), ".");
+            else if (slash == opts.rom) snprintf(dir, sizeof(dir), "/");
+            else {
+                size_t len = (size_t) (slash - opts.rom);
+                if (len >= sizeof(dir)) len = sizeof(dir) - 1;
+                memcpy(dir, opts.rom, len);
+                dir[len] = '\0';
+            }
+            char unused[PD_PATH_MAX];
+            pd_pick_rom(dir, NULL, NULL, unused, sizeof(unused), render, input, opts.rom);
+            // The emulator was paused while browsing; do not count that time as
+            // a held quit chord or try to catch up the frame scheduler.
+            next = lastTick = SDL_GetPerformanceCounter();
+            quitHeldMs = 0;
+            break;
+        }
         case PD_ACTION_LEAVE_GAME:
             pd_logf("companion: leaving the game");
             running = false;

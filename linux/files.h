@@ -20,6 +20,15 @@ bool pd_save_path(const char* romPath, char* out, size_t outLen);
 // the newest PD_BACKUPS. A missing or empty save is fine (nothing to do).
 bool pd_backup_save(const char* savePath);
 
+// Restore the newest backup only after protecting the current save. The
+// replacement is staged beside the save and renamed only after a complete copy.
+bool pd_latest_backup(const char* savePath, char* out, size_t outLen);
+bool pd_restore_backup(const char* romPath);
+#define PD_BACKUP_PATH 2200
+// Newest first, up to max entries. Paths belong to this save only.
+int pd_list_backups(const char* savePath, char paths[][PD_BACKUP_PATH], int max);
+bool pd_restore_backup_at(const char* romPath, const char* backupPath);
+
 // Where the save state goes: "<rom dir>/pokedaisy-states/<stem>.ss1", beside
 // the game where a player can find it.
 bool pd_state_path(const char* romPath, char* out, size_t outLen);

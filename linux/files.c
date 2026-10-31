@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #define PD_PATH_MAX 1024
 #define PD_NAME_MAX 1100
@@ -112,8 +114,17 @@ bool pd_save_path(const char* romPath, char* out, size_t outLen) {
     return n > 0 && (size_t) n < outLen;
 }
 
+// The unsuffixed backup is older than the -001, -002 ... backups from the
+// same second, even though '.' sorts after '-' in ASCII.
+static int backup_order(const char* a, const char* b) {
+    while (*a && *b && *a == *b) { a++; b++; }
+    if (*a == '.' && *b == '-') return -1;
+    if (*a == '-' && *b == '.') return 1;
+    return (unsigned char) *a - (unsigned char) *b;
+}
+
 static int cmp_names(const void* a, const void* b) {
-    return strcmp(*(const char* const*) a, *(const char* const*) b);
+    return backup_order(*(const char* const*) a, *(const char* const*) b);
 }
 
 // Keeps the newest PD_BACKUPS of "<name>.backup-*.sav" in dir; the names sort
@@ -184,6 +195,10 @@ bool pd_backup_save(const char* savePath) {
 
     char to[PD_NAME_MAX + PD_PATH_MAX];
     snprintf(to, sizeof(to), "%s/%s.backup-%s.sav", dir, name, stamp);
+    // Never overwrite a backup taken earlier in the same second.
+    for (int i = 1; access(to, F_OK) == 0; i++) {
+        snprintf(to, sizeof(to), "%s/%s.backup-%s-%03d.sav", dir, name, stamp, i);
+    }
     if (!copy_file(savePath, to)) {
         pd_logf("files: couldn't back up %s", savePath);
         return false;
@@ -191,6 +206,85 @@ bool pd_backup_save(const char* savePath) {
     pd_logf("files: backed the save up to %s", to);
     prune_backups(dir, name);
     return true;
+}
+
+int pd_list_backups(const char* savePath, char paths[][PD_BACKUP_PATH], int max) {
+    char stem[PD_PATH_MAX], dir[PD_PATH_MAX], prefix[PD_NAME_MAX];
+    if (max <= 0 || !pd_path_stem(savePath, stem, sizeof(stem))) return 0;
+    dir_of(stem, dir, sizeof(dir));
+    snprintf(prefix, sizeof(prefix), "%s.backup-", base_name(stem));
+    DIR* d = opendir(dir);
+    if (!d) return 0;
+    int count = 0;
+    struct dirent* e;
+    while ((e = readdir(d))) {
+        size_t len = strlen(e->d_name), pre = strlen(prefix);
+        if (len <= pre + 4 || strncmp(e->d_name, prefix, pre) ||
+            strcmp(e->d_name + len - 4, ".sav")) continue;
+        char candidate[PD_PATH_MAX + PD_NAME_MAX];
+        snprintf(candidate, sizeof(candidate), "%s/%s", dir, e->d_name);
+        if (!file_exists_nonempty(candidate, NULL)) continue;
+        int at = 0;
+        while (at < count && backup_order(base_name(paths[at]), e->d_name) > 0) at++;
+        if (at >= max) continue;
+        if (count < max) count++;
+        for (int i = count - 1; i > at; i--) memcpy(paths[i], paths[i - 1], PD_BACKUP_PATH);
+        snprintf(paths[at], PD_BACKUP_PATH, "%s", candidate);
+    }
+    closedir(d);
+    return count;
+}
+
+bool pd_latest_backup(const char* savePath, char* out, size_t outLen) {
+    char paths[1][PD_BACKUP_PATH];
+    if (!pd_list_backups(savePath, paths, 1)) return false;
+    int n = snprintf(out, outLen, "%s", paths[0]);
+    return n > 0 && (size_t) n < outLen;
+}
+
+bool pd_restore_backup(const char* romPath) {
+    char save[PD_PATH_MAX], backup[PD_BACKUP_PATH];
+    if (!pd_save_path(romPath, save, sizeof(save)) ||
+        !pd_latest_backup(save, backup, sizeof(backup))) return false;
+    return pd_restore_backup_at(romPath, backup);
+}
+
+bool pd_restore_backup_at(const char* romPath, const char* backupPath) {
+    char save[PD_PATH_MAX], backups[PD_BACKUPS][PD_BACKUP_PATH], temp[PD_PATH_MAX + 32];
+    if (!backupPath || !pd_save_path(romPath, save, sizeof(save))) return false;
+    int backupCount = pd_list_backups(save, backups, PD_BACKUPS);
+    bool found = false;
+    for (int i = 0; i < backupCount; i++) if (strcmp(backups[i], backupPath) == 0) found = true;
+    if (!found) return false;
+    int n = snprintf(temp, sizeof(temp), "%s.restore-XXXXXX", save);
+    if (n < 0 || (size_t) n >= sizeof(temp)) return false;
+    int fd = mkstemp(temp);
+    if (fd < 0) return false;
+    FILE* in = fopen(backupPath, "rb");
+    FILE* out = fdopen(fd, "wb");
+    bool ok = in && out;
+    char buf[65536];
+    size_t count;
+    while (ok && (count = fread(buf, 1, sizeof(buf), in)) > 0)
+        if (fwrite(buf, 1, count, out) != count) ok = false;
+    if (in && ferror(in)) ok = false;
+    if (in) fclose(in);
+    if (out) {
+        if (fflush(out) != 0 || fsync(fd) != 0) ok = false;
+        if (fclose(out) != 0) ok = false;
+    } else close(fd);
+    if (ok) ok = pd_backup_save(save);
+    // Refuse the restore if an old resume cannot be removed: it could otherwise
+    // be loaded on the next start instead of the newly restored battery save.
+    char resume[PD_PATH_MAX];
+    if (ok && (!pd_resume_path(romPath, resume, sizeof(resume)) ||
+               (unlink(resume) != 0 && errno != ENOENT))) ok = false;
+    if (ok) ok = rename(temp, save) == 0;
+    if (!ok) unlink(temp);
+    if (ok) {
+        pd_logf("files: restored %s", backupPath);
+    }
+    return ok;
 }
 
 bool pd_state_path(const char* romPath, char* out, size_t outLen) {

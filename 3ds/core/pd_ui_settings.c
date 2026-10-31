@@ -138,6 +138,10 @@ bool ui_settings_act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_SETTINGS_CHANGED;
         return true;
     }
+    if (id == HIT_SETTING + SETTING_LIBRARY) {
+        ui->action = PD_ACTION_LIBRARY;
+        return true;
+    }
     if (id == HIT_SETTINGS_BACK) {
         // TAB BAR and TWEAKS live behind COMPANION (C-SET-01).
         bool inner = ui->settingsPage == PD_SETTINGS_TABS || ui->settingsPage == PD_SETTINGS_TWEAKS;
@@ -342,6 +346,7 @@ static void saves_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ho
     }
     setting(ui, c, ix, &y, iw, SETTING_RESTART, "RESTART GAME", NULL);
     setting(ui, c, ix, &y, iw, SETTING_LEAVE, "LEAVE GAME", NULL);
+    if (host && host->hasLibrary) setting(ui, c, ix, &y, iw, SETTING_LIBRARY, "LIBRARY", NULL);
 }
 
 // --- overlays ---

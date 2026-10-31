@@ -15,6 +15,6 @@
 // pick: tests only - a name to choose without a pad (NULL = wait for one);
 // shot: with pick, write the list to this PNG first (NULL = none).
 bool pd_pick_rom(const char* dir, const char* pick, const char* shot, char* out, size_t outLen,
-                 struct pd_render* render, struct pd_input* input);
+                 struct pd_render* render, struct pd_input* input, const char* playing);
 
 #endif
