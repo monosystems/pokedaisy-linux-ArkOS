@@ -918,6 +918,8 @@ int main(int argc, char** argv) {
     uint64_t audioTicks = 0;
     uint64_t drawTicks = 0;
     struct test_nav tn = { opts.testNav, 0 };
+    Uint32 statusUpdated = 0;
+    bool statusInitialized = false;
     if (opts.startCompanion) {
         pd_companion_show(companion, true);
         log_overlay(companion);
@@ -1081,6 +1083,12 @@ int main(int argc, char** argv) {
         uint64_t audioEnd = SDL_GetPerformanceCounter();
 
         const uint32_t* ui = overlay ? pd_companion_draw(companion) : NULL;
+        Uint32 statusNow = SDL_GetTicks();
+        if (!statusInitialized || statusNow - statusUpdated >= 1000) {
+            pd_render_status(render, pd_companion_status(companion), PD_STATUS_W, PD_STATUS_H);
+            statusInitialized = true;
+            statusUpdated = statusNow;
+        }
         pd_render_frame(render, video, ui, PD_COMPANION_W, PD_COMPANION_H);
         uint64_t drawEnd = SDL_GetPerformanceCounter();
         frames += (unsigned long long) n;

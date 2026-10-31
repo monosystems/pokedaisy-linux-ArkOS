@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <SDL.h>
 
@@ -42,7 +43,11 @@ struct pd_companion {
     struct pd_host_info host;
     char settingsPath[1024];
     char title[64];
+    char statusLabel[112]; // the game name and place last drawn in the status bar
     uint32_t px[PD_COMPANION_W * PD_COMPANION_H];
+    uint32_t statusPx[PD_STATUS_W * PD_STATUS_H];
+    Uint32 statusAt;
+    bool statusDrawn;
     bool visible;
     bool dirty;
     bool cursorSet; // fx/fy point at something the last draw made
@@ -53,6 +58,8 @@ struct pd_companion {
 
 static void set_host(struct pd_companion* c) {
     c->host.count = 2;
+    c->host.hasStatusBar = true;
+    c->host.hasLibrary = true;
     c->host.labels[0] = "GAME";
     // A 40-byte SETTINGS value against the file name's 64: cut here, on purpose,
     // instead of letting snprintf do it behind the compiler's back (-Wformat-
@@ -122,6 +129,149 @@ bool pd_companion_supported(const struct pd_companion* c) {
 
 const char* pd_companion_title(const struct pd_companion* c) {
     return c ? c->title : "";
+}
+
+// ASCII uppercase for the app's gameCaps: its own "POKéMON" keeps the é,
+// which is a multi-byte character here and must pass through untouched.
+static void upper_copy(char* out, size_t len, const char* in) {
+    size_t n = 0;
+    for (; in && *in && n + 1 < len; in++) {
+        unsigned char ch = (unsigned char) *in;
+        out[n++] = ch >= 'a' && ch <= 'z' ? (char) (ch - 'a' + 'A') : (char) ch;
+    }
+    if (len) out[n] = 0;
+}
+
+// The app's BatteryIndicator: a 15x9 body with a 2x3 nub, its 11 inner columns
+// filled by the charge. ink draws the outline, fillInk what is left of it.
+static void battery_icon(struct pd_canvas* c, int x, int y, int percent, uint32_t ink, uint32_t fillInk) {
+    pd_fill(c, x, y, 15, 1, ink);
+    pd_fill(c, x, y + 8, 15, 1, ink);
+    pd_fill(c, x, y, 1, 9, ink);
+    pd_fill(c, x + 14, y, 1, 9, ink);
+    pd_fill(c, x + 15, y + 3, 2, 3, ink);
+    int filled = percent <= 0 ? 0 : (percent * 11 + 50) / 100;
+    if (percent > 0 && filled < 1) filled = 1;
+    if (filled > 11) filled = 11;
+    if (filled) pd_fill(c, x + 2, y + 2, filled, 5, fillInk);
+}
+
+static bool starts_with(const char* s, const char* prefix) {
+    return strncmp(s, prefix, strlen(prefix)) == 0;
+}
+
+// A short name for the bar. The detected game wins ("FireRed"), because the file
+// name is a download's business: "Pokemon - Fire Red Version (U) (V1.1).gba"
+// would fill the whole row. Others get the stem without its tags.
+static void game_label(const struct pd_companion* c, char* out, size_t len) {
+    if (c->game.cfg || c->game.code[0]) {
+        if (!strcmp(c->game.code, "BPRE")) { snprintf(out, len, "FireRed"); return; }
+        if (!strcmp(c->game.code, "BPGE")) { snprintf(out, len, "LeafGreen"); return; }
+        if (!strcmp(c->game.code, "BPEE")) { snprintf(out, len, "Emerald"); return; }
+    }
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%s", c->title);
+    // Cut the tags: " (U)", " [b]", and the word Version.
+    char* cut = strpbrk(buf, "([");
+    if (cut) {
+        while (cut > buf && (cut[-1] == ' ' || cut[-1] == '-')) cut--;
+        *cut = 0;
+    }
+    const char* s = buf;
+    if (starts_with(s, "Pokemon - ")) s += 10;
+    else if (starts_with(s, "Pokemon ")) s += 8;
+    size_t n = strlen(s);
+    if (n > 8 && !strcmp(s + n - 8, " Version")) ((char*) s)[n - 8] = 0;
+    snprintf(out, len, "%s", s);
+    n = strlen(out);
+    while (n && out[n - 1] == ' ') out[--n] = 0;
+}
+
+const uint32_t* pd_companion_status(struct pd_companion* c) {
+    if (!c || !c->settings.statusBar) return NULL;
+    Uint32 now = SDL_GetTicks();
+    if (c->statusDrawn && now - c->statusAt < 1000) return c->statusPx;
+    c->statusDrawn = true;
+    c->statusAt = now;
+    struct pd_canvas cv;
+    pd_canvas_init(&cv, PD_STATUS_W, PD_STATUS_H, c->statusPx);
+    // The app's GameStatusBar: one row in the OPTION screen's title window.
+    // The frame's own colour behind the rounded corners, so the bar reads as one
+    // rectangle over the game instead of carrying black corner pixels.
+    pd_fill(&cv, 0, 0, PD_STATUS_W, PD_STATUS_H, 0x63737B);
+    int f = pd_title_box(&cv, 0, 0, PD_STATUS_W, PD_STATUS_H, PD_TITLE_FILL);
+    int ty = pd_text_y(0, PD_STATUS_H);
+    int left = f + 5, right = PD_STATUS_W - f - 5;
+
+    // Right side first, so the game name can give way to it.
+    char clock[24], battery[32], moneyText[24];
+    time_t t = time(NULL);
+    struct tm* tm = localtime(&t);
+    if (!tm || !strftime(clock, sizeof(clock), "%H:%M", tm)) snprintf(clock, sizeof(clock), "--:--");
+    int seconds = -1, percent = -1;
+    SDL_PowerState power = SDL_GetPowerInfo(&seconds, &percent);
+    bool haveMoney = c->shown.valid && c->shown.money >= 0;
+    if (haveMoney) snprintf(moneyText, sizeof(moneyText), "%ld", c->shown.money);
+    int clockW = pd_text_width(clock);
+    int moneyW = 7 + 1 + (haveMoney ? pd_text_width(moneyText) : 0);
+    int batteryW = 0;
+    if (percent >= 0) {
+        snprintf(battery, sizeof(battery), "%d%%", percent);
+        batteryW = 18 + 3 + pd_text_width(battery);
+    }
+    int rx = right;
+    if (batteryW) {
+        rx -= batteryW;
+        int bx = rx;
+        uint32_t ink = PD_TITLE_TEXT, shade = PD_TITLE_SHADOW;
+        if (power == SDL_POWERSTATE_CHARGING) ink = 0x2C9A3C;
+        else if (percent <= 15) ink = PD_VALUE;
+        // Shadow one pixel right, down and diagonal, like the text's.
+        battery_icon(&cv, bx + 1, ty + 1, percent, shade, shade);
+        battery_icon(&cv, bx, ty, percent, ink, ink);
+        pd_text(&cv, bx + 18 + 3, ty, battery, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+        rx -= 8;
+    }
+    rx -= clockW;
+    pd_text(&cv, rx, ty, clock, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    rx -= 8;
+    if (haveMoney) {
+        rx -= moneyW;
+        // The Pokédollar sign: a P whose stem two bars cross.
+        static const uint16_t DOLLAR[9] = { 0x1E, 0x21, 0x21, 0x1E, 0x10, 0x0F, 0x10, 0x0F, 0x10 };
+        pd_bitmap(&cv, rx + 1, ty + 1, DOLLAR, 9, PD_TITLE_SHADOW);
+        pd_bitmap(&cv, rx, ty, DOLLAR, 9, PD_TITLE_TEXT);
+        pd_text(&cv, rx + 8, ty, moneyText, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+        rx -= 8;
+    }
+
+    // Left: the place first (it is what changes), the game's short name while
+    // there is room for it. A long name never squeezes the place out.
+    char label[48], name[48];
+    game_label(c, label, sizeof(label));
+    upper_copy(name, sizeof(name), label);
+    const char* place = c->shown.valid ? pd_mapsec_name(&c->game, c->shown.mapsec) : "";
+    char placeText[64] = { 0 };
+    if (place && *place) upper_copy(placeText, sizeof(placeText), place);
+    int available = rx - 8 - left;
+    int placeW = *placeText ? 9 + 2 + pd_text_width(placeText) : 0;
+    int nameBudget = available - (placeW ? placeW + 10 : 0);
+    int nw = 0;
+    if (nameBudget >= 34) nw = pd_text_fit(&cv, left, ty, nameBudget, name, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    if (*placeText) {
+        static const uint16_t PIN[9] = { 0x3E, 0x7F, 0x77, 0x63, 0x77, 0x3E, 0x1C, 0x1C, 0x08 };
+        int px = left + (nw ? nw + 10 : 0);
+        pd_bitmap(&cv, px + 1, ty + 1, PIN, 9, PD_VALUE_SHADOW);
+        pd_bitmap(&cv, px, ty, PIN, 9, PD_VALUE);
+        pd_text_fit(&cv, px + 11, ty, rx - 8 - (px + 11), placeText, PD_LABEL, PD_LABEL_SHADOW);
+    }
+    char key[112];
+    snprintf(key, sizeof(key), "%s|%s", name, *placeText ? placeText : "");
+    if (strcmp(c->statusLabel, key)) {
+        snprintf(c->statusLabel, sizeof(c->statusLabel), "%s", key);
+        pd_logf("status: game %s, place %s", name, *placeText ? placeText : "-");
+    }
+    return c->statusPx;
 }
 
 void pd_companion_show(struct pd_companion* c, bool visible) {

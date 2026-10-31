@@ -400,12 +400,32 @@ int main(int argc, char** argv) {
     // hints switch, SAVES the states, RESTART GAME and LEAVE GAME (C-SET-04).
     tap(&p, HIT_SETTING + SETTING_COMPANION, 0);
     shot(out, name, "settings-companion", px);
+    tap(&p, HIT_SETTING + SETTING_STATUS_BAR, 0);
+    shot(out, name, "settings-status-on", px);
+    tap(&p, HIT_SETTING + SETTING_STATUS_BAR, 0);
+    pd_ui_take_action(&ui);
 
     // TAB BAR (C-03): every tab as SHOWN or HIDDEN. Hide GUIDE and the game's
     // other tab takes its place; with the bar full again, GUIDE's row says so
     // instead of coming back.
     tap(&p, HIT_SETTING + SETTING_TAB_BAR, 0);
     shot(out, name, "settings-tabs", px);
+    unsigned savedTabs = settings.tabsShown;
+    for (int i = 0; i < PD_TAB_ORDER_COUNT; i++) {
+        enum pd_tab t = PD_TAB_ORDER[i];
+        if (pd_tab_shown(&settings, t) && has_hit(&p, HIT_SETTINGS_TAB + t))
+            tap(&p, HIT_SETTINGS_TAB + t, 0);
+    }
+    shot(out, name, "settings-tabs-all-hidden", px);
+    if (has_hit(&p, HIT_MORE)) {
+        tap(&p, HIT_MORE, 0);
+        shot(out, name, "all-hidden-more", px);
+    }
+    settings.tabsShown = savedTabs;
+    ui.tab = PD_TAB_SETTINGS;
+    ui.settingsPage = PD_SETTINGS_TABS;
+    ui.tabSlideMs = 0;
+    draw(&p);
     if (has_hit(&p, HIT_SETTINGS_TAB + PD_TAB_GUIDE)) {
         tap(&p, HIT_SETTINGS_TAB + PD_TAB_GUIDE, 0);
         shot(out, name, "settings-tabs-hidden", px);

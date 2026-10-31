@@ -29,6 +29,9 @@ void pd_render_frame(struct pd_render* r, const color_t* game, const uint32_t* o
 // The companion's SETTINGS tab picks how the game fills the screen.
 void pd_render_set_scale(struct pd_render* r, int scale);
 
+// A short opaque strip drawn over the game, but never over the companion.
+void pd_render_status(struct pd_render* r, const uint32_t* pixels, int w, int h);
+
 // Writes what the last frame looks like into a PNG (for tests and for the
 // manual). Redraws first: the window's back buffer isn't readable after a present.
 bool pd_render_screenshot(struct pd_render* r, const char* path);

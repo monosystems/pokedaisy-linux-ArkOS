@@ -57,6 +57,12 @@ bool pd_companion_nav(struct pd_companion* c, enum pd_nav key);
 // 0xRRGGBB) are valid afterwards.
 const uint32_t* pd_companion_draw(struct pd_companion* c);
 
+#define PD_STATUS_W 320
+#define PD_STATUS_H 20
+// NULL when switched off. Refreshes the clock, battery and game facts at most
+// once a second; the returned pixels remain owned by the companion.
+const uint32_t* pd_companion_status(struct pd_companion* c);
+
 // What the SETTINGS tab's LOAD STATE row says about the slot on disk.
 void pd_companion_set_state(struct pd_companion* c, bool hasState, const char* when);
 

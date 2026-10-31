@@ -54,7 +54,7 @@ static void info_pair(struct pd_canvas* c, int x, int y, int w, const char* l1, 
 
 // A page's title window: its name, a count or note at its right, and BACK to
 // the option list (the app's OptionTitleWindow with its arrow).
-static void companion_page(struct pd_ui* ui, struct pd_canvas* c);
+static void companion_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_info* host);
 static void speed_page(struct pd_ui* ui, struct pd_canvas* c);
 static void speed_label(int pct, char* buf, size_t len);
 static void battle_page(struct pd_ui* ui, struct pd_canvas* c);
@@ -133,6 +133,11 @@ static void tweaks_page(struct pd_ui* ui, struct pd_canvas* c) {
 // chip still fits is the count the last draw worked out (ui->tabsPicked), the
 // app's barCount over the tabs this game has.
 bool ui_settings_act(struct pd_ui* ui, int id) {
+    if (id == HIT_SETTING + SETTING_STATUS_BAR) {
+        ui->settings->statusBar = !ui->settings->statusBar;
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
+        return true;
+    }
     if (id == HIT_SETTINGS_BACK) {
         // TAB BAR and TWEAKS live behind COMPANION (C-SET-01).
         bool inner = ui->settingsPage == PD_SETTINGS_TABS || ui->settingsPage == PD_SETTINGS_TWEAKS;
@@ -185,7 +190,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         return;
     }
     if (ui->settingsPage == PD_SETTINGS_COMPANION) {
-        companion_page(ui, c);
+        companion_page(ui, c, host);
         return;
     }
     if (ui->settingsPage == PD_SETTINGS_BATTLE) {
@@ -252,7 +257,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
 }
 
 // The COMPANION page: the bar's own pick, then its small switches.
-static void companion_page(struct pd_ui* ui, struct pd_canvas* c) {
+static void companion_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_info* host) {
     page_title(ui, c, "COMPANION", NULL);
     int x = MARGIN, w = c->w - 2 * MARGIN, y = LIST_Y;
     int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
@@ -262,6 +267,8 @@ static void companion_page(struct pd_ui* ui, struct pd_canvas* c) {
     snprintf(buf, sizeof(buf), "%d/%d", ui->tabsPicked, PD_BAR_TABS);
     page_row(ui, c, ix, &y, iw, SETTING_TAB_BAR, "TAB BAR", buf);
     page_row(ui, c, ix, &y, iw, SETTING_TWEAKS, "TWEAKS", NULL);
+    if (host && host->hasStatusBar)
+        setting(ui, c, ix, &y, iw, SETTING_STATUS_BAR, "STATUS BAR", ui->settings->statusBar ? "ON" : "OFF");
 }
 
 // The BATTLE page: the hints switch (C-BT-08), where the app keeps it.

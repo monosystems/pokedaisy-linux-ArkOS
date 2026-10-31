@@ -22,6 +22,9 @@ struct pd_render {
     SDL_Surface* surface; // headless: what the software renderer draws into
     SDL_Texture* game;
     SDL_Texture* ui;
+    SDL_Texture* status;
+    int statusW, statusH;
+    bool statusShown;
     SDL_Texture* target; // only for a rotated panel
     int targetW, targetH;
     int gw, gh;
@@ -81,6 +84,11 @@ static void draw_scene(struct pd_render* r, int lw, int lh) {
         SDL_Rect dst;
         fit_rect(r->gw, r->gh, lw, lh, r->scale, &dst);
         SDL_RenderCopy(r->renderer, r->game, NULL, &dst);
+    }
+    if (r->lastGame && !r->lastUi && r->statusShown && r->status) {
+        SDL_Rect dst = { 0, 0, lw, lh * r->statusH / 240 };
+        if (dst.h < 1) dst.h = 1;
+        SDL_RenderCopy(r->renderer, r->status, NULL, &dst);
     }
     if (r->lastUi && r->ui) {
         SDL_UpdateTexture(r->ui, NULL, r->lastUi, r->uw * 4);
@@ -204,6 +212,7 @@ void pd_render_close(struct pd_render* r) {
     if (r->ui) {
         SDL_DestroyTexture(r->ui);
     }
+    if (r->status) SDL_DestroyTexture(r->status);
     if (r->game) {
         SDL_DestroyTexture(r->game);
     }
@@ -217,6 +226,21 @@ void pd_render_close(struct pd_render* r) {
         SDL_FreeSurface(r->surface);
     }
     free(r);
+}
+
+void pd_render_status(struct pd_render* r, const uint32_t* pixels, int w, int h) {
+    if (!r) return;
+    r->statusShown = pixels && w > 0 && h > 0;
+    if (!r->statusShown) return;
+    if (!r->status || r->statusW != w || r->statusH != h) {
+        if (r->status) SDL_DestroyTexture(r->status);
+        r->status = SDL_CreateTexture(r->renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, w, h);
+        r->statusW = w;
+        r->statusH = h;
+        if (!r->status) return;
+        SDL_SetTextureBlendMode(r->status, SDL_BLENDMODE_NONE);
+    }
+    SDL_UpdateTexture(r->status, NULL, pixels, w * 4);
 }
 
 void pd_render_frame(struct pd_render* r, const color_t* game, const uint32_t* overlay, int ow, int oh) {
