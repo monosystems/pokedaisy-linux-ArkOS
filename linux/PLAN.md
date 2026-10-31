@@ -23,7 +23,7 @@ smoke test (`linux/test/smoke.sh`) and the CI jobs
 | 1 | The host: sound, pad and keyboard, saves and their backups, one save state, fast-forward, the `/roms/gba` launcher, resume | done |
 | 2 | The companion over the game: `pd_ui` at 320x240 scaled 2x, the D-pad cursor over its hits, SETTINGS, the PortMaster package | done |
 | 3 | The first run on the R36S itself | done: it boots and plays, the DEX's EVOLVE works, the three SCREEN modes are measured, and the zip installs through PortMaster |
-| 4 | Content parity with the app's companion | under way: the P1 items in `TODO.md`; P1.1 (the bar's rules), P1.2 (TAB BAR and TWEAKS) and P1.3 (the title screen's waiting tabs) are done and seen on the R36S; P1.4 (the held item tag), P1.5 (EXP and the matchups), P1.6 (the STATS page), P1.7 to P1.9 (the bag's own look, `ALL`, the order, TM names and favorites) and P1.10 (the dex's filters) are done in the preview |
+| 4 | Content parity with the app's companion | under way: P1.1 to P1.16 are done, including the Linux status bar and library INFO, backup restoration and paused-game marker. Hidden tabs stay in MORE; the title-screen wait no longer ends from party data alone; the Linux bag cursor scrolls item by item and reaches the selected item's favorite star. Regression tests cover these rules, speed selection and persistent ROM-specific favorites. Some rows remain narrower than the app in `PORTING.md` |
 | 5 | More games and languages, then the app's field actions | planned |
 
 ## Phase 3 — the handheld

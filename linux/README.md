@@ -47,8 +47,13 @@ cmake --build linux/build -j
 | `Esc` or closing the window | leave the game |
 
 Started without a game it lists the `.gba` files of `/roms/gba` (or `--roms
-DIR`): D-pad picks, A starts, START quits. That is what the PortMaster port
-does.
+DIR`): D-pad picks, A starts, SELECT shows file information, and START quits.
+On the information page, B returns to the list. A lists the backups; choose one
+and confirm before restoring it. Your current save is backed up first, and an
+old resume is removed so it cannot hide the restored save. During a game,
+SETTINGS > SAVES > LIBRARY pauses it and opens the same list; PLAYING marks the
+current game and SAVE marks games with saves. B returns to the game. You cannot
+switch games from this paused list, or restore the save the game has open.
 
 ## The companion
 
@@ -57,16 +62,21 @@ doesn't see the buttons while it is up. There is no touchscreen, so a **cursor**
 does the tapping: the D-pad moves it onto the next real control on the screen
 (the game's own OPTION-look tabs, rows and buttons), `A` presses what it is on,
 `B` goes back, `L1`/`R1` change tab, `START` (or `L2`) puts it away again. On a
-list, pushing past the last row scrolls it, the way a finger drag would.
+list, pushing past the last row scrolls it, the way a finger drag would. In the
+bag, `UP` and `DOWN` follow the item rows and scroll to the next item; use
+`LEFT` to move back to the pockets and `PC` button. Select an item with `A`,
+then press `RIGHT` and `A` to toggle its favorite star; `LEFT` returns to the
+selected item. In the POKéDEX, `UP` and `DOWN` walk the entries row by row and
+scroll with them.
 
 The tabs are the ones the game has, in the app's order: PARTY, DEX, MAP, BAG and
-GUIDE, plus the TRAINER CARD once you put it on the bar in `SETTINGS > TAB BAR`.
-A tab exists only when its data does - DEX needs the ROM's dex tables, GUIDE its
-pages, CARD its art - and what the bar has no room for opens from `MORE` (the
-nine squares left of the gear, with no chip at all when nothing is hidden). Up
-to five tabs sit next to the gear; hide one in `TAB BAR` and the game's other
-tabs take the place, as the app does. In a battle BATTLE comes first and takes
-one of their places, so the last tab moves behind `MORE` until the battle ends.
+GUIDE, plus the TRAINER CARD. A tab exists only when its data does: DEX needs
+the ROM's dex tables, GUIDE its pages, CARD its art. Up to five tabs sit next
+to the gear. Hide one in `SETTINGS > COMPANION > TAB BAR` and it leaves the bar
+and opens from `MORE` (the nine squares left of the gear), even if there is room
+on the bar. `MORE` is absent when no available tab is hidden. In a battle BATTLE
+comes first and takes one place, so a chosen tab can move behind `MORE` until
+the battle ends. You can hide all tabs and still reach `MORE` and settings.
 SETTINGS (the gear) is not on the bar. SETTINGS holds the screen mode, the
 fast-forward speed, the bar's own pick (`TAB BAR`), the four switches in
 `TWEAKS` (party icons, map cursor, tab animations, jump to battle), SAVE STATE
@@ -74,16 +84,30 @@ and LOAD STATE (one slot per game, beside the ROM in `pokedaisy-states/`), and
 LEAVE GAME. SAVE and LOAD ask first; `A` on YES does it. A save state never
 carries the battery save, and the save is backed up before every load.
 
+SETTINGS > COMPANION > STATUS BAR puts the app's bar over the game: a short
+game label (FireRed, LeafGreen, Emerald), a map pin and the place, the
+Pokédollar sign and your money, the local time and the battery with its charge.
+The place keeps its room and the label is left out when the row is narrow, so a
+long ROM file name never pushes the place aside. It is off by default, stays
+hidden over the companion, and leaves out a value the host can't read (a
+desktop has no battery).
+
 Those choices, and which tabs you put on the bar, live in `pokedaisy.ini` beside
 the ROM (`--settings FILE` for somewhere else); a missing or hand-edited file
 falls back to the defaults, and unknown keys are ignored.
 
+Bag favorites use a fingerprint of the ROM's contents and are kept per game.
+Older favorite entries are preserved in the settings file, but their old IDs
+cannot reliably identify a game, so you need to star those items again.
+
 Before you are in the game - the game's title screen, its intro, `CONTINUE` still
 loading the save - `PARTY`, `BAG`, `MAP` and `CARD` wait: they show empty party
 slots, the app's window and a blinking `PRESS START` instead of whatever the RAM
-still holds from the last session. They fill in as soon as the game reads
-(walking, a battle, the save loaded), and a game resumed from where you left off
-shows at once; `log.txt` says `waiting 1` while they wait.
+still holds from the last session. The wait ends at a battle or after five
+different positions; a game resumed from where you left off shows at once.
+After `CONTINUE`, walk a few steps if you are still waiting. A party alone does
+not end the wait because its data can be present on the title screen. `log.txt`
+says `waiting 1` while the tabs wait.
 
 What the companion can read is the portable core's list, not every game:
 FireRed, LeafGreen and Emerald, English, so far - `pd_game`'s game codes. Any
@@ -139,7 +163,15 @@ switch (`--test-nav tabnext`), and the launcher's game list and empty state
 (`--roms`, `--pick`, `--menu-shot`) - and checks every screenshot and log. That
 covers the core, the frame loop, the texture upload, the scaling, the portable
 UI, the cursor navigation, the launcher and the PNG writer in one run. It is
-what CI runs.
+what CI runs. The library test also drives its real menu with scripted button
+presses and disposable files: it checks cancellation, selection and restoration
+of `.sav` and `.srm`, the pre-restore backup, the resume and state files, and the
+guard for the running game's save. This does not replace a pad or exFAT test on
+the handheld. The companion cursor test follows every bag item down and back up
+in FireRed and Emerald fixtures, toggles the selected first and last items'
+stars, and reaches `PC` from the pockets. With a local FireRed ROM it also
+walks the POKéDEX list down and back up, checking that the cursor follows the
+scrolled rows.
 
 `--companion` and `--test-nav LIST` are test hooks: the first opens the overlay
 at start, the second feeds it presses one per frame (`down,tabnext,ok`), so a
