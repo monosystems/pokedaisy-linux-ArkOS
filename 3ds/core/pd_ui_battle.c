@@ -90,7 +90,7 @@ static void card(struct pd_canvas* c, const struct pd_game* g, int x, int y, int
                 worstType = threat->type2;
             }
         }
-        char label[24];
+        char label[96];
         if (worst > 100) {
             ui_pct_label(worst, buf, sizeof(buf));
             snprintf(label, sizeof(label), "%s %s", pd_type_name(worstType), buf);

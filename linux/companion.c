@@ -13,6 +13,7 @@
 #include "pd_map.h"
 #include "pd_romart.h"
 #include "pd_settings.h"
+#include "pd_ui_internal.h"
 
 // How often the game is read, in emulated frames.
 #define PD_SAMPLE_EVERY 10
@@ -209,11 +210,16 @@ static int focus_index(struct pd_companion* c) {
     }
     int under = -1;
     long underArea = 0;
+    int tiny = -1; // a clipped row under the cursor is a last resort: no ring fits
     int best = -1;
     long bestDist = 0;
     for (int i = start; i < c->ui.hitCount; i++) {
         const struct pd_hit* h = &c->ui.hits[i];
         if (c->fx >= h->x && c->fx < h->x + h->w && c->fy >= h->y && c->fy < h->y + h->h) {
+            if (h->h < 4) {
+                if (tiny < 0) tiny = i;
+                continue;
+            }
             long area = (long) h->w * h->h;
             if (under < 0 || area < underArea) {
                 under = i;
@@ -229,7 +235,7 @@ static int focus_index(struct pd_companion* c) {
             bestDist = d;
         }
     }
-    return under >= 0 ? under : best;
+    return under >= 0 ? under : tiny >= 0 ? tiny : best;
 }
 
 static void focus_center(struct pd_companion* c, int i) {
@@ -243,10 +249,15 @@ static void draw_ring(struct pd_canvas* cv, const struct pd_hit* h) {
     if (h->w < 4 || h->h < 4) {
         return;
     }
-    pd_fill(cv, h->x, h->y, h->w, 2, PD_FOCUS_COLOR);
-    pd_fill(cv, h->x, h->y + h->h - 2, h->w, 2, PD_FOCUS_COLOR);
-    pd_fill(cv, h->x, h->y, 2, h->h, PD_FOCUS_COLOR);
-    pd_fill(cv, h->x + h->w - 2, h->y, 2, h->h, PD_FOCUS_COLOR);
+    // A white-only cursor disappears on Emerald's white description box.
+    pd_fill(cv, h->x, h->y, h->w, 2, 0x182030);
+    pd_fill(cv, h->x, h->y + h->h - 2, h->w, 2, 0x182030);
+    pd_fill(cv, h->x, h->y, 2, h->h, 0x182030);
+    pd_fill(cv, h->x + h->w - 2, h->y, 2, h->h, 0x182030);
+    pd_fill(cv, h->x + 1, h->y + 1, h->w - 2, 1, PD_FOCUS_COLOR);
+    pd_fill(cv, h->x + 1, h->y + h->h - 2, h->w - 2, 1, PD_FOCUS_COLOR);
+    pd_fill(cv, h->x + 1, h->y + 1, 1, h->h - 2, PD_FOCUS_COLOR);
+    pd_fill(cv, h->x + h->w - 2, h->y + 1, 1, h->h - 2, PD_FOCUS_COLOR);
 }
 
 static void draw_notice(struct pd_canvas* cv, const struct pd_companion* c) {
@@ -295,6 +306,70 @@ static bool in_band(int a0, int a1, int b0, int b1) {
     return b0 < a1 + 4 && b1 > a0 - 4;
 }
 
+// A bag row is a logical item, including when its next neighbour is below the
+// clipped list window. Keep up/down in that list instead of jumping to PC.
+static bool focus_bag_row(struct pd_companion* c, int next) {
+    if (next < 0 || next >= c->ui.bagRowCount) return false;
+    const struct pd_hit* list = NULL;
+    for (int i = 0; i < c->ui.hitCount; i++) {
+        if (c->ui.hits[i].id == HIT_BAG_LIST) { list = &c->ui.hits[i]; break; }
+    }
+    if (!list) return false;
+    int top = list->y + next * PD_BAG_ROW_H - c->ui.bagScroll;
+    int scroll = c->ui.bagScroll;
+    if (top < list->y) scroll -= list->y - top;
+    else if (top + PD_BAG_ROW_H > list->y + list->h) scroll += top + PD_BAG_ROW_H - (list->y + list->h);
+    if (scroll < 0) scroll = 0;
+    if (scroll > c->ui.bagScrollMax) scroll = c->ui.bagScrollMax;
+    if (scroll != c->ui.bagScroll) {
+        c->ui.bagScroll = scroll;
+        c->dirty = true;
+        pd_companion_draw(c); // rebuild the clipped hits before focusing the new row
+    }
+    for (int i = 0; i < c->ui.hitCount; i++) {
+        if (c->ui.hits[i].id == HIT_BAG_ROW + next) {
+            focus_center(c, i);
+            c->dirty = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+// A DEX row is a logical entry too. The list's scroll settles on a row
+// boundary, so the cursor never sits on a clipped sliver that draws no ring.
+static bool focus_dex_row(struct pd_companion* c, int next) {
+    int count = pd_ui_dex_row_count();
+    if (next < 0 || next >= count) return false;
+    const struct pd_hit* list = NULL;
+    for (int i = 0; i < c->ui.hitCount; i++) {
+        if (c->ui.hits[i].id == HIT_DEX_LIST) { list = &c->ui.hits[i]; break; }
+    }
+    if (!list) return false;
+    int top = list->y + next * PD_DEX_ROW_H - c->ui.dexScroll;
+    int scroll = c->ui.dexScroll;
+    if (top < list->y) scroll -= list->y - top;
+    else if (top + PD_DEX_ROW_H > list->y + list->h) scroll += top + PD_DEX_ROW_H - (list->y + list->h);
+    int maxScroll = count * PD_DEX_ROW_H - list->h;
+    if (maxScroll < 0) maxScroll = 0;
+    if (scroll < 0) scroll = 0;
+    if (scroll > maxScroll) scroll = maxScroll;
+    if (scroll != c->ui.dexScroll) {
+        c->ui.dexScroll = scroll;
+        c->dirty = true;
+        pd_companion_draw(c); // rebuild the clipped hits before focusing the new row
+    }
+    int national = pd_ui_dex_row_national(next);
+    for (int i = 0; i < c->ui.hitCount; i++) {
+        if (c->ui.hits[i].id == HIT_DEX_ROW + national) {
+            focus_center(c, i);
+            c->dirty = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 // The nearest hit in that direction. A list scrolls when there is none.
 static bool step(struct pd_companion* c, int dx, int dy) {
     int cur = focus_index(c);
@@ -302,6 +377,33 @@ static bool step(struct pd_companion* c, int dx, int dy) {
         return false;
     }
     const struct pd_hit* h = &c->ui.hits[cur];
+    if (dy && c->ui.tab == PD_TAB_DEX && c->ui.overlay == PD_OVERLAY_NONE && !c->ui.dexOpen &&
+        h->id >= HIT_DEX_ROW && h->id < HIT_DEX_ROW + PD_NATIONAL_COUNT) {
+        int index = pd_ui_dex_row_index(h->id - HIT_DEX_ROW);
+        if (index >= 0) {
+            if (focus_dex_row(c, index + dy)) return true;
+            // At the last entry, DOWN must not leave the list sideways.
+            if (dy > 0) return false;
+        }
+    }
+    if (c->ui.tab == PD_TAB_BAG && c->ui.overlay == PD_OVERLAY_NONE) {
+        if (dx > 0 && h->id == HIT_BAG_ROW + c->ui.bagSelected && c->ui.bagSelected >= 0) {
+            for (int i = 0; i < c->ui.hitCount; i++) {
+                if (c->ui.hits[i].id == HIT_BAG_STAR) {
+                    focus_center(c, i);
+                    c->dirty = true;
+                    return true;
+                }
+            }
+        }
+        if (dx < 0 && h->id == HIT_BAG_STAR && focus_bag_row(c, c->ui.bagSelected)) return true;
+    }
+    if (dy && c->ui.tab == PD_TAB_BAG && c->ui.overlay == PD_OVERLAY_NONE &&
+        h->id >= HIT_BAG_ROW && h->id < HIT_BAG_ROW + c->ui.bagRowCount) {
+        if (focus_bag_row(c, h->id - HIT_BAG_ROW + dy)) return true;
+        // At the bottom, DOWN must not send the cursor sideways to PC.
+        if (dy > 0) return false;
+    }
     int cx = h->x + h->w / 2;
     int cy = h->y + h->h / 2;
     int best = -1;

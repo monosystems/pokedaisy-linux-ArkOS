@@ -12,7 +12,7 @@
 #define FILTER_Y (CONTENT_Y + TITLE_H + 2)
 #define FILTER_H 18
 #define LIST_Y (FILTER_Y + FILTER_H + 2)
-#define DEX_ROW 18
+#define DEX_ROW PD_DEX_ROW_H
 #define TOGGLE_W 78
 
 // Whether the National Dex shows: the player's pick, else the save's own.
@@ -133,6 +133,21 @@ static void filter_row(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
 // game at hand: the toggle flips what shows, up / down step through it.
 static int lastList[PD_NATIONAL_COUNT], lastCount;
 static bool lastNational;
+
+int pd_ui_dex_row_count(void) {
+    return lastCount;
+}
+
+int pd_ui_dex_row_national(int index) {
+    return index >= 0 && index < lastCount ? lastList[index] : 0;
+}
+
+int pd_ui_dex_row_index(int national) {
+    for (int i = 0; i < lastCount; i++) {
+        if (lastList[i] == national) return i;
+    }
+    return -1;
+}
 
 static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     const int* list = lastList;

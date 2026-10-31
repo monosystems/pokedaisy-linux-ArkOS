@@ -55,7 +55,7 @@ static const struct bag_palette EMERALD_BAG = {
 #define LIST_X (MARGIN + TAB_W + 6)
 #define LIST_Y CONTENT_Y
 #define DESC_Y 160
-#define BAG_ROW 17
+#define BAG_ROW PD_BAG_ROW_H
 #define FIRST_HM 339 // ITEM_HM01..ITEM_HM08: no quantity, like the game
 #define LAST_HM 346
 
@@ -261,12 +261,15 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     int f = pd_layered_box(c, x, LIST_Y, w, h, 3, p->panel, p->panelLayers, p->fill);
     int ix = x + f, iy = LIST_Y + f + 1, iw = w - 2 * f, ih = h - 2 * f - 2;
     ui_add_scroll_hit(ui, ix, iy, iw, ih, HIT_BAG_LIST);
+    ui->bagRowCount = rowCount;
+    ui->bagScrollMax = 0;
     if (rowCount == 0) {
         pd_text(c, ix + 14, pd_text_y(iy, BAG_ROW), "No items.", p->text, p->textShadow);
         return;
     }
     int maxScroll = rowCount * BAG_ROW - ih;
     if (maxScroll < 0) maxScroll = 0;
+    ui->bagScrollMax = maxScroll;
     if (ui->bagScroll > maxScroll) ui->bagScroll = maxScroll;
     if (ui->bagScroll < 0) ui->bagScroll = 0;
 
@@ -343,6 +346,8 @@ static void description(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
 
 void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     if (!s->bagOk) {
+        ui->bagRowCount = 0;
+        ui->bagScrollMax = 0;
         ui_notice(c, "NO BAG YET", "The bag shows once the game", "has loaded a save.");
         return;
     }
@@ -407,6 +412,8 @@ bool ui_bag_act(struct pd_ui* ui, int id) {
     }
     if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + rowCount) {
         ui->bagSelected = id - HIT_BAG_ROW;
+        // This is an explicit new selection, not a reorder of the old item.
+        selItemId = 0;
         ui->bagPcNotice = false;
         return true;
     }

@@ -75,7 +75,15 @@ void ui_pct_label(int pct, char* buf, size_t len) {
 // it stays off. Returns how tall it came out; c NULL only measures.
 int ui_matchup_block(struct pd_canvas* c, int x, int y, int w, const struct pd_matchups* m) {
     static const char* const HEADINGS[3] = { "WEAK TO", "RESISTS", "IMMUNE TO" };
-    int cx = x + 60, cy = y;
+    // The widest heading sets the chips' column: a fixed 60 px cut "IMMUNE TO"
+    // off under the first chip.
+    int indent = 0;
+    for (int g = 0; g < 3; g++) {
+        int hw = pd_text_width(HEADINGS[g]);
+        if (hw > indent) indent = hw;
+    }
+    indent += 6;
+    int cx = x + indent, cy = y;
     for (int g = 0; g < 3; g++) {
         const struct pd_matchup* list = g == 0 ? m->weak : g == 1 ? m->resist : m->immune;
         int n = g == 0 ? m->weakCount : g == 1 ? m->resistCount : m->immuneCount;
@@ -85,7 +93,7 @@ int ui_matchup_block(struct pd_canvas* c, int x, int y, int w, const struct pd_m
             ui_pct_label(list[k].pct, label, sizeof(label));
             int cw = ui_type_chip_width(list[k].type, label);
             if (cx + cw > x + w) {
-                cx = x + 60;
+                cx = x + indent;
                 cy += 16;
             }
             if (c && heading) pd_text(c, x, cy - 2, HEADINGS[g], PD_LABEL, PD_LABEL_SHADOW);
@@ -95,7 +103,7 @@ int ui_matchup_block(struct pd_canvas* c, int x, int y, int w, const struct pd_m
         }
         if (!heading) {
             cy += 16;
-            cx = x + 60;
+            cx = x + indent;
         }
     }
     return cy + 16 - y;

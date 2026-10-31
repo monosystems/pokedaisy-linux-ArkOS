@@ -220,6 +220,9 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
         }
         ui->overlay = PD_OVERLAY_NONE;
         ui->battlePane = 0;
+        // A new battle starts at the top: a scroll left from the last one
+        // would hide the foe's card and its matchups.
+        ui->battleScroll = 0;
         ui->foeSeen = 0;
         ui->foeSelected = -1;
         ui->lastFoeActive = ui->lastFoeNext = -1;
