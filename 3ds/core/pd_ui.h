@@ -71,8 +71,7 @@ enum pd_tweak {
 };
 
 // SETTINGS > TAB BAR (the app's COMPANION_TABS): a bit per tab the player put
-// on the bar. The game's other tabs fill the places left over, and what still
-// has no room opens from MORE.
+// on the bar. Hidden tabs and picks that do not fit in a battle open from MORE.
 #define PD_TAB_BIT(tab) (1u << (unsigned) (tab))
 #define PD_TWEAK_BIT(tweak) (1u << (unsigned) (tweak))
 #define PD_TABS_DEFAULT \
@@ -85,7 +84,7 @@ enum pd_tweak {
 #define PD_FAV_ROMS 4
 #define PD_FAV_MAX 32
 struct pd_favs {
-    unsigned rom; // pd_rom_id, 0 = the slot is free
+    unsigned rom; // pd_favorite_rom_id, 0 = the slot is free
     unsigned short items[PD_FAV_MAX];
     int count;
 };
@@ -96,10 +95,14 @@ struct pd_settings {
     int ffSpeed;    // PD_FF_SPEEDS' percent, 0 = INFINITE (H-24)
     int gameSpeed;  // PD_GAME_SPEED_STEPS' percent the game stays at (H-27)
     bool slowMotion; // L1 held slows the game down (H-29)
+    bool statusBar;  // H-38: show the host's status strip over the game
     int guideNotice; // a bit per game kind whose GUIDE notice was accepted
     unsigned tabsShown; // a bit per enum pd_tab: the player's pick of the bar
     unsigned tweaks;    // a bit per enum pd_tweak: on
     struct pd_favs favs[PD_FAV_ROMS];
+    // Old process-local IDs cannot be mapped back to games safely. Preserve
+    // them on disk rather than attributing them to an unrelated ROM.
+    struct pd_favs legacyFavs[PD_FAV_ROMS];
 };
 
 // Whether the player left [t] on (SETTINGS > TWEAKS).
@@ -139,6 +142,15 @@ enum pd_summary_page {
 // every pocket in the game's order, FAVORITES holds the starred items.
 #define PD_BAG_ALL (-1)
 #define PD_BAG_FAVORITES (-2)
+// Height of one row in the bag's scrollable list, in canvas pixels.
+#define PD_BAG_ROW_H 17
+
+// Height of one row in the POKéDEX's list, and the list the last draw built
+// (national numbers), so a host cursor can step row by row across scrolling.
+#define PD_DEX_ROW_H 18
+int pd_ui_dex_row_count(void);
+int pd_ui_dex_row_national(int index);
+int pd_ui_dex_row_index(int national);
 
 // The bag's order button (C-B-05): the game's own order with the starred items
 // first, by name, by pocket, or by how many are held.
@@ -157,6 +169,7 @@ enum pd_action {
     PD_ACTION_LOAD_STATE,
     PD_ACTION_LEAVE_GAME,
     PD_ACTION_RESTART_GAME, // C-SET-04: reboot the game, its save as it was
+    PD_ACTION_LIBRARY,      // the Linux host's library while this game is paused
     PD_ACTION_SETTINGS_CHANGED,
 };
 
@@ -168,6 +181,8 @@ struct pd_host_info {
     int count;
     bool ffOn;
     bool hasState;      // a save state exists for LOAD STATE
+    bool hasStatusBar;  // this host draws the status strip
+    bool hasLibrary;    // this host can open the library while playing
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
 };
 
@@ -218,7 +233,7 @@ struct pd_ui {
     enum pd_settings_page settingsPage;
     // C-05: whether the player is in the game yet. A boot at the title screen
     // draws empty party slots and a blinking PRESS START on the save's tabs
-    // until a battle, a party or five different map positions say otherwise
+    // until a battle or five different map positions say otherwise
     // (the app's rule, without its field-callback check), or the host resumed
     // into a state. posSeen are the positions this boot has shown.
     bool started;
@@ -240,6 +255,7 @@ struct pd_ui {
     // pick (enum bag_order), and the PC button's "not yet" line in the
     // description box.
     int bagPocket, bagSelected, bagScroll, bagOrder;
+    int bagRowCount, bagScrollMax; // the most recent draw's list, for pad navigation
     bool bagPcNotice;
     // POKéDEX: the list's scroll, the open entry (national number, 0 = the
     // list), which dex shows (-1 = the save's own: National once it has

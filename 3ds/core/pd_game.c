@@ -183,6 +183,23 @@ unsigned pd_rom_id(const struct pd_game* g) {
     return g->rom ? g->loadId : 0;
 }
 
+unsigned pd_favorite_rom_id(const struct pd_game* g) {
+    static unsigned cachedLoad, cachedId;
+    static const uint8_t* cachedRom;
+    static size_t cachedSize;
+    if (!g || !g->rom || !g->romSize) return 0;
+    if (cachedLoad == g->loadId && cachedRom == g->rom && cachedSize == g->romSize) return cachedId;
+    // Hash once per load, not on each bag row. Content, not the reused mGBA
+    // address or the process-local load counter, identifies the game on disk.
+    uint32_t hash = 2166136261u;
+    for (size_t i = 0; i < g->romSize; i++) hash = (hash ^ g->rom[i]) * 16777619u;
+    cachedLoad = g->loadId;
+    cachedRom = g->rom;
+    cachedSize = g->romSize;
+    cachedId = hash ? hash : 1;
+    return cachedId;
+}
+
 bool pd_rom_read(const struct pd_game* g, uint32_t addr, void* out, size_t len) {
     const uint8_t* p = pd_rom_at(g, addr, len);
     if (!p) return false;

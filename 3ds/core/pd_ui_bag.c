@@ -139,7 +139,7 @@ static int bag_tabs(struct pd_ui* ui, const struct pd_game* g, const struct pd_s
         int p = g->cfg->bagOrder[i];
         if (s->bag[p].count > 0) out[n++] = p;
     }
-    if (favs_in_bag(ui, pd_rom_id(g), s)) out[n++] = PD_BAG_FAVORITES;
+    if (favs_in_bag(ui, pd_favorite_rom_id(g), s)) out[n++] = PD_BAG_FAVORITES;
     return n;
 }
 
@@ -182,7 +182,7 @@ static int compare_rows(struct pd_ui* ui, const struct pd_game* g, const struct 
         if (ia->quantity != ib->quantity) return ib->quantity - ia->quantity;
         return strcmp(pd_item_name(g, ia->id), pd_item_name(g, ib->id));
     default: // DEFAULT: the starred items first, then the bag's own order
-        return (is_favorite(ui, pd_rom_id(g), ia->id) ? 0 : 1) - (is_favorite(ui, pd_rom_id(g), ib->id) ? 0 : 1);
+        return (is_favorite(ui, pd_favorite_rom_id(g), ia->id) ? 0 : 1) - (is_favorite(ui, pd_favorite_rom_id(g), ib->id) ? 0 : 1);
     }
 }
 
@@ -195,7 +195,7 @@ static void build_rows(struct pd_ui* ui, const struct pd_game* g, const struct p
         if (ui->bagPocket != PD_BAG_ALL && ui->bagPocket != PD_BAG_FAVORITES && ui->bagPocket != pocket) continue;
         const struct pd_pocket_items* items = &s->bag[pocket];
         for (int k = 0; k < items->count && rowCount < BAG_ROWS; k++) {
-            if (ui->bagPocket == PD_BAG_FAVORITES && !is_favorite(ui, pd_rom_id(g), items->items[k].id)) continue;
+            if (ui->bagPocket == PD_BAG_FAVORITES && !is_favorite(ui, pd_favorite_rom_id(g), items->items[k].id)) continue;
             rows[rowCount++] = (struct bag_row) { pocket, k };
         }
     }
@@ -280,7 +280,7 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
         bool cursor = i == ui->bagSelected || ui->pressedId == HIT_BAG_ROW + i;
         if (cursor) pd_triangle(c, ix + 4, ry + 3, 6, PD_RIGHT, p->cursor);
         int tx = ix + 14;
-        if (is_favorite(ui, pd_rom_id(g), it->id)) {
+        if (is_favorite(ui, pd_favorite_rom_id(g), it->id)) {
             star_mark(c, tx, ry + 5, 0xE8B830);
             tx += 11;
         }
@@ -330,7 +330,7 @@ static void description(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
         const char* d = pd_item_description(g, it->id);
         if (*d) text = d;
         // The star that keeps this item in FAVORITES: gold when it has one.
-        bool on = is_favorite(ui, pd_rom_id(g), it->id);
+        bool on = is_favorite(ui, pd_favorite_rom_id(g), it->id);
         int sx = tx + tw - 16, sy = ty + 4;
         pd_round_rect(c, sx - 3, sy - 3, 15, 16, 3, on ? 0xE8B830 : 0x9C9C8C);
         pd_fill(c, sx - 2, sy - 2, 13, 14, p->descFill);
@@ -374,7 +374,7 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         }
     }
     if (ui->bagSelected >= rowCount) ui->bagSelected = -1;
-    lastRom = pd_rom_id(g);
+    lastRom = pd_favorite_rom_id(g);
     const struct pd_item* sel = selected_item(ui, s);
     selItemId = sel ? sel->id : 0;
     tabs(ui, c, g, s, p, ui->bagPocket);

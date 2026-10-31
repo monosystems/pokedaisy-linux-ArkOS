@@ -122,6 +122,10 @@ struct pd_game {
 // the same fixed buffer.
 unsigned pd_rom_id(const struct pd_game* g);
 
+// A stable content fingerprint for preferences persisted per ROM. Unlike the
+// load ID above, it survives a restart and must not be used for ROM caches.
+unsigned pd_favorite_rom_id(const struct pd_game* g);
+
 // Reads from the ROM at a bus address (0x08xxxxxx); false if out of range.
 bool pd_rom_read(const struct pd_game* g, uint32_t addr, void* out, size_t len);
 // A pointer into the ROM at a bus address, with at least len bytes after it.
