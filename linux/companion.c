@@ -29,7 +29,8 @@
 static void speed_text(int pct, char* buf, size_t len) {
     if (pct <= 0) snprintf(buf, len, "INFINITE");
     else if (pct % 100 == 0) snprintf(buf, len, "%dx", pct / 100);
-    else snprintf(buf, len, "%d.%dx", pct / 100, pct % 100 / 10);
+    else if (pct % 10 == 0) snprintf(buf, len, "%d.%dx", pct / 100, pct % 100 / 10);
+    else snprintf(buf, len, "%d.%02dx", pct / 100, pct % 100);
 }
 
 struct pd_companion {

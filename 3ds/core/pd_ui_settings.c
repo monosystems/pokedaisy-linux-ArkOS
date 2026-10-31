@@ -296,7 +296,8 @@ static int speed_index(int pct) {
 static void speed_label(int pct, char* buf, size_t len) {
     if (pct == 0) snprintf(buf, len, "INFINITE");
     else if (pct % 100 == 0) snprintf(buf, len, "%dx", pct / 100);
-    else snprintf(buf, len, "%d.%dx", pct / 100, pct % 100 / 10);
+    else if (pct % 10 == 0) snprintf(buf, len, "%d.%dx", pct / 100, pct % 100 / 10);
+    else snprintf(buf, len, "%d.%02dx", pct / 100, pct % 100);
 }
 
 // The SPEED page (H-24, H-27, H-29): the fast-forward step, what the game stays
@@ -347,7 +348,9 @@ static void title_window(struct pd_canvas* c, int y, const char* title) {
 static void pick_list(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* const* options, int n,
                       int current) {
     int x = MARGIN, w = c->w - 2 * MARGIN;
-    int y = CONTENT_Y + 8;
+    // The nine fast-forward choices need a little more vertical room so the
+    // last row and the bottom of its frame stay on the 240-pixel screen.
+    int y = CONTENT_Y + (n >= PD_FF_STEPS ? 2 : 8);
     title_window(c, y, title);
     y += TITLE_H + 4;
     int lf = pd_list_box(c, x, y, w, n * ROW_H + 2 * 7 + 4);
@@ -398,19 +401,27 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     pd_dim(c, 0xE6);
     // Swallows taps beside the windows (they close the overlay).
     ui_add_hit(ui, 0, 0, c->w, c->h, HIT_SCRIM);
-    static char ffLabels[PD_FF_STEPS][12];
-    static char gameLabels[PD_GAME_SPEEDS][12];
-    for (int i = 0; i < PD_FF_STEPS; i++) speed_label(PD_FF_SPEEDS[i], ffLabels[i], sizeof(ffLabels[i]));
-    for (int i = 0; i < PD_GAME_SPEEDS; i++) speed_label(PD_GAME_SPEED_STEPS[i], gameLabels[i], sizeof(gameLabels[i]));
+    static char ffLabels[PD_FF_STEPS][24];
+    static char gameLabels[PD_GAME_SPEEDS][24];
+    const char* ffOptions[PD_FF_STEPS];
+    const char* gameOptions[PD_GAME_SPEEDS];
+    for (int i = 0; i < PD_FF_STEPS; i++) {
+        speed_label(PD_FF_SPEEDS[i], ffLabels[i], sizeof(ffLabels[i]));
+        ffOptions[i] = ffLabels[i];
+    }
+    for (int i = 0; i < PD_GAME_SPEEDS; i++) {
+        speed_label(PD_GAME_SPEED_STEPS[i], gameLabels[i], sizeof(gameLabels[i]));
+        gameOptions[i] = gameLabels[i];
+    }
     switch (ui->overlay) {
     case PD_OVERLAY_PICK_SCREEN:
         pick_list(ui, c, "SCREEN", SCREEN_NAMES, PD_SCREEN_MODES, ui->settings->screenMode);
         break;
     case PD_OVERLAY_PICK_FF:
-        pick_list(ui, c, "FAST-FORWARD", (const char* const*) ffLabels, PD_FF_STEPS, ff_index(ui->settings->ffSpeed));
+        pick_list(ui, c, "FAST-FORWARD", ffOptions, PD_FF_STEPS, ff_index(ui->settings->ffSpeed));
         break;
     case PD_OVERLAY_PICK_SPEED:
-        pick_list(ui, c, "GAME SPEED", (const char* const*) gameLabels, PD_GAME_SPEEDS,
+        pick_list(ui, c, "GAME SPEED", gameOptions, PD_GAME_SPEEDS,
                   speed_index(ui->settings->gameSpeed));
         break;
     case PD_OVERLAY_TABS_FULL: {

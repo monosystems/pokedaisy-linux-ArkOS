@@ -473,12 +473,20 @@ static void act(struct pd_ui* ui, int id) {
         return;
     }
     if (ui->overlay != PD_OVERLAY_NONE) {
-        if (id >= HIT_OPTION && id < HIT_OPTION + 8) {
+        if (id >= HIT_OPTION && id < HIT_OPTION + PD_FF_STEPS) {
             int i = id - HIT_OPTION;
-            if (ui->overlay == PD_OVERLAY_PICK_SCREEN) ui->settings->screenMode = i;
-            if (ui->overlay == PD_OVERLAY_PICK_FF && i < PD_FF_STEPS) ui->settings->ffSpeed = PD_FF_SPEEDS[i];
-            if (ui->overlay == PD_OVERLAY_PICK_SPEED && i < PD_GAME_SPEEDS) ui->settings->gameSpeed = PD_GAME_SPEED_STEPS[i];
-            close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
+            bool valid = false;
+            if (ui->overlay == PD_OVERLAY_PICK_SCREEN && i < PD_SCREEN_MODES) {
+                ui->settings->screenMode = i;
+                valid = true;
+            } else if (ui->overlay == PD_OVERLAY_PICK_FF && i < PD_FF_STEPS) {
+                ui->settings->ffSpeed = PD_FF_SPEEDS[i];
+                valid = true;
+            } else if (ui->overlay == PD_OVERLAY_PICK_SPEED && i < PD_GAME_SPEEDS) {
+                ui->settings->gameSpeed = PD_GAME_SPEED_STEPS[i];
+                valid = true;
+            }
+            if (valid) close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
         } else if (id == HIT_YES) {
             enum pd_action a = ui->overlay == PD_OVERLAY_CONFIRM_SAVE ? PD_ACTION_SAVE_STATE
                 : ui->overlay == PD_OVERLAY_CONFIRM_LOAD ? PD_ACTION_LOAD_STATE
@@ -512,6 +520,7 @@ static void act(struct pd_ui* ui, int id) {
         static const enum pd_overlay OPENS[SETTING_COUNT] = {
             [SETTING_SCREEN] = PD_OVERLAY_PICK_SCREEN,
             [SETTING_FF] = PD_OVERLAY_PICK_FF,
+            [SETTING_GAME_SPEED] = PD_OVERLAY_PICK_SPEED,
             [SETTING_SAVE_STATE] = PD_OVERLAY_CONFIRM_SAVE,
             [SETTING_LOAD_STATE] = PD_OVERLAY_CONFIRM_LOAD,
             [SETTING_RESTART] = PD_OVERLAY_CONFIRM_RESTART,

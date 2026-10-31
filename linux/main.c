@@ -79,7 +79,14 @@ struct options {
 // The speed the game runs at, in percent of normal (0 = INFINITE): slow motion
 // while L1 is held (H-29, when COMPANION's switch is on), else the fast-forward
 // step (H-24) while it runs, else GAME SPEED (H-27).
-#define PD_INFINITE_BURST 32
+//
+// INFINITE runs frames for a short slice rather than a fixed count: a 32-frame
+// burst is a third of a second of frozen picture on the RK3326 (~9 ms a frame),
+// which looks like a hang. Every fast-forward step gets a slice of two frame
+// times too, so a step the device can't reach still keeps the picture coming
+// instead of freezing it for a whole burst.
+#define PD_INFINITE_MS 30
+#define PD_FF_SLICE_MS 33
 #define PD_SPEED_BURST_MAX 64
 static int speed_pct(struct pd_companion* c, bool ff, bool l1) {
     if (!c) return ff ? 200 : 100;
@@ -187,8 +194,10 @@ static bool parse_options(int argc, char** argv, struct options* o) {
             o->frames = atoi(argv[++i]);
         } else if (strcmp(arg, "--ff") == 0 && i + 1 < argc) {
             o->ffSpeed = atoi(argv[++i]);
-            if (o->ffSpeed < 1) {
-                o->ffSpeed = 1;
+            // 0 is INFINITE; anything below the first step is no faster than
+            // normal and used to leave the game at 1% (a frozen picture).
+            if (o->ffSpeed != 0 && o->ffSpeed < PD_FF_SPEEDS[0]) {
+                o->ffSpeed = PD_FF_SPEEDS[0];
             }
             o->ffSet = true;
         } else if (strcmp(arg, "--screenshot") == 0 && i + 1 < argc) {
@@ -1047,21 +1056,26 @@ int main(int argc, char** argv) {
         // GAME SPEED. The remainder carries over, so 1.5x really is 1.5x.
         int speedPct = speed_pct(companion, ff, pd_input_down(input, PD_BTN_L1));
         int n = 0;
-        if (speedPct == 0) {
-            // INFINITE: as many frames as fit between two presents.
-            n = PD_INFINITE_BURST;
-        } else {
+        if (speedPct > 0) {
             speedAcc += speedPct;
             n = speedAcc / 100;
             speedAcc -= n * 100;
+            if (n < 0) n = 0;
+            if (n > PD_SPEED_BURST_MAX) n = PD_SPEED_BURST_MAX;
         }
-        if (n < 0) n = 0;
-        if (n > PD_SPEED_BURST_MAX) n = PD_SPEED_BURST_MAX;
         core->setKeys(core, overlay ? 0 : pd_input_keys(input));
         uint64_t emuStart = SDL_GetPerformanceCounter();
-        for (int i = 0; i < n; i++) {
-            core->runFrame(core);
+        int sliceMs = speedPct == 0 ? PD_INFINITE_MS : PD_FF_SLICE_MS;
+        int limit = speedPct == 0 ? PD_SPEED_BURST_MAX : n;
+        int ran = 0;
+        if (limit > 0) {
+            do {
+                core->runFrame(core);
+                ran++;
+            } while (ran < limit &&
+                     (SDL_GetPerformanceCounter() - emuStart) * 1000 < (uint64_t) sliceMs * counter);
         }
+        n = ran;
         uint64_t emuEnd = SDL_GetPerformanceCounter();
         pd_audio_pump(audio);
         uint64_t audioEnd = SDL_GetPerformanceCounter();
@@ -1104,9 +1118,10 @@ int main(int argc, char** argv) {
             break;
         }
 
-        // Pace to the GBA's own frame rate; a slow device falls behind instead
-        // of running away to catch up.
-        next += (uint64_t) (frameTicks * n);
+        // Pace one emulated frame per pass: the frames a fast-forward step runs
+        // extra are what makes the game faster. Scaling the delay by n instead
+        // kept the emulator at 1x and only halved the picture's rate.
+        next += (uint64_t) frameTicks;
         now = SDL_GetPerformanceCounter();
         if (now < next) {
             double ms = (double) (next - now) * 1000.0 / (double) counter;
@@ -1168,4 +1183,3 @@ cleanup:
     pd_log_close();
     return status;
 }
-

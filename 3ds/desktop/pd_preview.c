@@ -435,6 +435,15 @@ int main(int argc, char** argv) {
     // SPEED (H-24, H-27, H-29): the fast-forward step, GAME SPEED, slow motion.
     tap(&p, HIT_SETTING + SETTING_SPEED, 0);
     shot(out, name, "settings-speed", px);
+    tap(&p, HIT_SETTING + SETTING_FF, 0);
+    shot(out, name, "settings-pick-ff", px);
+    tap(&p, HIT_OPTION + PD_FF_STEPS - 1, 0);
+    shot(out, name, "settings-ff-infinite", px);
+    tap(&p, HIT_SETTING + SETTING_FF, 0);
+    tap(&p, HIT_OPTION + 1, 0);
+    tap(&p, HIT_SETTING + SETTING_GAME_SPEED, 0);
+    shot(out, name, "settings-pick-game-speed", px);
+    tap(&p, HIT_OPTION + 3, 0);
     if (has_hit(&p, HIT_SETTING + SETTING_SLOW)) {
         tap(&p, HIT_SETTING + SETTING_SLOW, 0);
         shot(out, name, "settings-speed-off", px);
